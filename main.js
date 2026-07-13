@@ -1,7 +1,7 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbwulidxzNLLsZvifPbG8WTYXDMfVnhfsSJH6i8u7F1j3dIp3SiNSMd1x8qpO1jzzARWLA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzkir70yRcjU9df1XjmGemO8H4i4qynTgMipGnghJLI-O4dU8IDBpUtaRkZtc92JelGew/exec";
 
 let currentUser = null,
     isSidebarOpen = true,
