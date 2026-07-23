@@ -1,7 +1,7 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbzkir70yRcjU9df1XjmGemO8H4i4qynTgMipGnghJLI-O4dU8IDBpUtaRkZtc92JelGew/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwIUG4O5zw9PHr7E9CpimbKj1o3R-CR7LhVHXLw4dMXqlDDVALZt7Er6LPHqy-TItyPYQ/exec";
 
 let currentUser = null,
     isSidebarOpen = true,
@@ -1752,14 +1752,19 @@ async function saveSiswa(e, isEdit) {
     const fd = new FormData(e.target);
     let tgl = fd.get('tanggalLahir');
 
+    const toTitleCase = (str) => {
+        if (!str) return '';
+        return String(str).toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    };
+
     const siswaData = {
-        nama: fd.get('nama'),
+        nama: fd.get('nama') ? String(fd.get('nama')).toUpperCase() : '',
         nisn: "'" + fd.get('nisn'),
         jenisKelamin: fd.get('jenisKelamin'),
         tanggalLahir: tgl,
         agama: fd.get('agama'),
-        namaAyah: fd.get('namaAyah'),
-        namaIbu: fd.get('namaIbu'),
+        namaAyah: toTitleCase(fd.get('namaAyah')),
+        namaIbu: toTitleCase(fd.get('namaIbu')),
         noHp: "'" + fd.get('noHp'),
         kelas: fd.get('kelas'),
         alamat: fd.get('alamat')
@@ -1929,7 +1934,7 @@ function createSiswaModal(s = null) {
                     </div>
                     <div>
                         <label class="${labelClass}">NISN</label>
-                        <input type="number" name="nisn" value="${s?.nisn || ''}" required ${isEdit ? 'readonly class="' + inputClass + ' opacity-60 cursor-not-allowed"' : `class="${inputClass}"`} placeholder="Nomor Induk">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" onblur="padNisn(this)" name="nisn" value="${s?.nisn || ''}" required ${isEdit ? 'readonly class="' + inputClass + ' opacity-60 cursor-not-allowed"' : `class="${inputClass}"`} placeholder="Nomor Induk">
                     </div>
                     <div class="relative group">
                         <label class="${labelClass}">Kelas</label>
@@ -2337,3 +2342,18 @@ function processFullRestoreJSON(input) {
     });
 }
 
+
+// --- [BARU] Fungsi Auto-Pad NISN 10 Digit ---
+window.padNisn = function(el) {
+    let val = el.value.trim();
+    if (val.length > 0 && val.length < 10) {
+        let diff = 10 - val.length;
+        el.value = val.padStart(10, '0');
+        Swal.fire({
+            icon: 'info',
+            title: 'Pemberitahuan NISN',
+            text: 'NISN wajib 10 angka. Karena Anda hanya mengisi ' + val.length + ' angka, maka otomatis ditambah ' + diff + ' nol di depannya.',
+            confirmButtonText: 'Oke'
+        });
+    }
+}
