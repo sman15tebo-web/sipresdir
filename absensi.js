@@ -256,7 +256,7 @@ function renderMonitoringRows(data, startIdx) {
         return `
         <tr class="hover:bg-gray-50 border-b border-gray-50 transition group">
             <td class="p-2 text-center text-gray-400 text-[10px]">${startIdx + i + 1}</td>
-            <td class="p-2 whitespace-nowrap min-w-[120px]">
+            <td class="p-2 whitespace-nowrap min-w-[120px] sticky left-0 bg-white group-hover:bg-gray-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                 <div class="font-bold text-xs text-gray-900 break-words leading-tight line-clamp-2 max-w-[150px] whitespace-normal" title="${d.nama}">${d.nama}</div>
                 <div class="text-[9px] text-gray-500 font-mono mt-0.5">${d.nisn}</div>
             </td>
