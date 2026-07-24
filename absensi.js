@@ -147,18 +147,23 @@ async function loadMonitoringAbsensi() {
 
     document.getElementById('monitoringDate').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+    const myClass = (currentUser && currentUser.role === 'guru') ? currentUser.kelas : null;
+
     const dropdown = document.getElementById('filterKelasMonitoring');
     if (dropdown && typeof existingClasses !== 'undefined' && existingClasses.length > 0) {
-        const currentValue = dropdown.value;
-        let options = '<option value="">Semua Kelas</option>';
-        existingClasses.forEach(kelas => {
-            options += `<option value="${kelas}">${kelas}</option>`;
-        });
-        dropdown.innerHTML = options;
-        if (currentValue) dropdown.value = currentValue;
+        if (myClass && myClass !== 'undefined' && myClass !== 'Semua Kelas' && myClass !== '') {
+            dropdown.innerHTML = `<option value="${myClass}">${myClass}</option>`;
+            dropdown.value = myClass;
+        } else {
+            const currentValue = dropdown.value;
+            let options = '<option value="">Semua Kelas</option>';
+            existingClasses.forEach(kelas => {
+                options += `<option value="${kelas}">${kelas}</option>`;
+            });
+            dropdown.innerHTML = options;
+            if (currentValue) dropdown.value = currentValue;
+        }
     }
-
-    const myClass = currentUser.role === 'guru' ? currentUser.kelas : null;
 
     if (tableState.monitoring.fullData.length > 0) {
         processTableData('monitoring');
@@ -315,22 +320,32 @@ async function changeStatus(nisn, nama, kelas, selectElement) {
 // LOGIKA REKAP ABSENSI & CETAK EXCEL/PDF (GURU/ADMIN)
 // ============================================================
 function loadRekapAbsensi() {
-    stopAndBack(false); setActiveMenu('Manaj. Presensi'); showView('view-rekap-absensi');
+    stopAndBack(false); 
+    if (currentUser && currentUser.role === 'admin') setActiveMenu('Manaj. Presensi');
+    else setActiveMenu('Monitoring');
+    showView('view-rekap-absensi');
     document.getElementById('rekapEmptyState').classList.remove('hidden');
     document.getElementById('rekapContainer').classList.add('hidden');
     document.getElementById('rekapLoading').classList.add('hidden');
     tableState.rekap.fullData = [];
 
+    const myClass = (currentUser && currentUser.role === 'guru') ? currentUser.kelas : null;
+
     const selectKelas = document.getElementById('fKelasRekap');
     if (selectKelas) {
-        selectKelas.innerHTML = '<option value="">Semua Kelas</option>';
-        if (existingClasses && existingClasses.length > 0) {
-            existingClasses.forEach(kelas => {
-                const option = document.createElement('option');
-                option.value = kelas;
-                option.textContent = kelas;
-                selectKelas.appendChild(option);
-            });
+        if (myClass && myClass !== 'undefined' && myClass !== 'Semua Kelas' && myClass !== '') {
+            selectKelas.innerHTML = `<option value="${myClass}">${myClass}</option>`;
+            selectKelas.value = myClass;
+        } else {
+            selectKelas.innerHTML = '<option value="">Semua Kelas</option>';
+            if (existingClasses && existingClasses.length > 0) {
+                existingClasses.forEach(kelas => {
+                    const option = document.createElement('option');
+                    option.value = kelas;
+                    option.textContent = kelas;
+                    selectKelas.appendChild(option);
+                });
+            }
         }
     }
 }
