@@ -1529,6 +1529,34 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- [BARU] Template Contoh Surat -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6">
+                                <div class="p-5 border-b border-gray-100 bg-emerald-50/50">
+                                    <h3 class="font-bold text-gray-800 flex items-center"><i
+                                            class="fas fa-file-upload text-emerald-600 mr-2"></i> Template Surat Izin
+                                    </h3>
+                                    <p class="text-xs text-gray-500 mt-1">Upload contoh format surat untuk diunduh siswa.</p>
+                                </div>
+                                <div class="p-5">
+                                    <div class="space-y-4">
+                                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">
+                                            <input type="file" id="inputTemplateSurat" accept="image/*,.pdf,.doc,.docx" class="hidden" onchange="previewTemplateSurat(this)">
+                                            <label for="inputTemplateSurat" class="cursor-pointer block">
+                                                <i class="fas fa-cloud-upload-alt text-3xl text-emerald-500 mb-2"></i>
+                                                <p class="text-xs font-bold text-gray-600" id="labelTemplateSurat">Pilih File Template</p>
+                                                <p class="text-[10px] text-gray-400 mt-1">Gbr / DOC / PDF (Max 2MB)</p>
+                                            </label>
+                                        </div>
+                                        <button type="button" onclick="uploadTemplateSuratBtn(this)"
+                                            class="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-emerald-700 transition transform active:scale-95 flex items-center justify-center gap-2">
+                                            <i class="fas fa-paper-plane"></i> Upload & Simpan
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Akhir Template Contoh Surat -->
+
                         </div>
                         <div class="lg:col-span-2">
                             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-full">
@@ -1816,6 +1844,7 @@
                                         <th class="p-4 text-center">Jam Pulang</th>
                                         <th class="p-4 text-center">Keterangan Waktu</th>
                                         <th class="p-4 text-center">Status Kehadiran</th>
+                                        <th class="p-4 text-center">Bukti Izin/Sakit</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tbody-monitoring" class="divide-y divide-gray-50 bg-white text-sm"></tbody>
@@ -2077,6 +2106,12 @@
                                     class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
                                     <i class="fas fa-paper-plane"></i> Kirim Pengajuan
                                 </button>
+                                
+                                <div class="mt-4 pt-4 border-t border-gray-100 text-center">
+                                    <button type="button" onclick="bukaModalContohSurat()" class="text-xs text-blue-600 font-bold hover:text-blue-800 transition inline-flex items-center gap-1">
+                                        <i class="fas fa-info-circle"></i> Lihat / Unduh Contoh Surat Izin
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
