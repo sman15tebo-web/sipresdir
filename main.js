@@ -3,7 +3,6 @@
 // ============================================================
 const API_URL = "https://script.google.com/macros/s/AKfycbwIUG4O5zw9PHr7E9CpimbKj1o3R-CR7LhVHXLw4dMXqlDDVALZt7Er6LPHqy-TItyPYQ/exec";
 
-
 let currentUser = null,
     isSidebarOpen = true,
     appCache = { siswa: null, guru: null },
@@ -493,7 +492,7 @@ function showView(viewId) {
     viewIdGlobal = viewId;
     const fabKasus = document.getElementById('fabInputKasus');
     if (fabKasus) {
-        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru') && viewId !== 'view-input-kasus') {
+        if (currentUser && currentUser.role === 'admin' && viewId !== 'view-input-kasus') {
             fabKasus.classList.remove('hidden');
         } else {
             fabKasus.classList.add('hidden');
@@ -749,7 +748,6 @@ function initDashboard() {
         menuHTML += createItem('Monitoring', 'fa-eye', 'loadMonitoringAbsensi()');
         menuHTML += createItem('Scan Presensi', 'fa-qrcode', 'loadScanAbsensi()');
         menuHTML += createItem('Input Kasus Siswa', 'fa-exclamation-triangle', 'loadInputKasus()');
-        menuHTML += createItem('Rekap Pelanggaran', 'fa-balance-scale', 'loadRekapKasus()');
         loadGuruDashboard();
     } else if (currentUser.role === 'siswa') {
         menuHTML += createItem('Dashboard', 'fa-home', 'loadSiswaDashboard()', true);
@@ -838,7 +836,7 @@ function initMobileNav() {
         navHTML += createBottomNav('Monitor', 'fa-desktop', 'loadMonitoringAbsensi()');
         navHTML += createBottomNav('Scan', 'fa-qrcode', 'loadScanAbsensi()', true);
         navHTML += createBottomNav('Akun', 'fa-user-circle', 'showProfilGuruMobile()');
-        navHTML += createBottomNav('Rekap Kasus', 'fa-balance-scale', 'loadRekapKasus()');
+        navHTML += createBottomNav('Kasus', 'fa-exclamation-triangle', 'loadInputKasus()');
 
     } else if (role === 'siswa') {
         if (btnSettings) { btnSettings.classList.remove('flex'); btnSettings.classList.add('hidden'); }
