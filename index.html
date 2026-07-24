@@ -982,12 +982,20 @@
                             <div class="p-5">
                                 <form onsubmit="changeAdminPass(event)">
                                     <div class="space-y-4">
-                                        <div><label class="block text-xs font-bold text-gray-700 mb-1">Password
-                                                Lama</label><input type="password" name="oldPass" required
-                                                class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
-                                        <div><label class="block text-xs font-bold text-gray-700 mb-1">Password
-                                                Baru</label><input type="password" name="newPass" required
-                                                class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Password Lama</label>
+                                            <div class="relative group">
+                                                <input type="password" name="oldPass" id="oldPassAdmin" required class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                                                <button type="button" onclick="toggleInputPass('oldPassAdmin', 'eyeOldPassAdmin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-indigo-600"><i class="fas fa-eye" id="eyeOldPassAdmin"></i></button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Password Baru</label>
+                                            <div class="relative group">
+                                                <input type="password" name="newPass" id="newPassAdmin" required class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                                                <button type="button" onclick="toggleInputPass('newPassAdmin', 'eyeNewPassAdmin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-indigo-600"><i class="fas fa-eye" id="eyeNewPassAdmin"></i></button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <button type="submit" id="btnChangePass"
                                         class="w-full mt-6 bg-rose-600 text-white py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-rose-700 transition">Update
