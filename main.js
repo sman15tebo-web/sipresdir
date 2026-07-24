@@ -2416,3 +2416,61 @@ window.padNisn = function(el) {
         });
     }
 }
+
+// ==========================================
+// KELOLA TEMPLATE SURAT
+// ==========================================
+let templateSuratFile = null;
+function previewTemplateSurat(input) {
+    if (input.files && input.files[0]) {
+        let file = input.files[0];
+        if (file.size > 2 * 1024 * 1024) {
+            Swal.fire('Terlalu Besar', 'Maksimal ukuran file 2 MB', 'warning');
+            input.value = '';
+            return;
+        }
+        templateSuratFile = file;
+        document.getElementById('labelTemplateSurat').innerText = file.name;
+    }
+}
+
+async function uploadTemplateSuratBtn(btn) {
+    if (!templateSuratFile) {
+        Swal.fire('Pilih File', 'Silakan pilih file template terlebih dahulu!', 'warning');
+        return;
+    }
+    
+    let originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload...';
+    btn.disabled = true;
+    
+    try {
+        let reader = new FileReader();
+        reader.readAsDataURL(templateSuratFile);
+        reader.onload = async function () {
+            let dataUrl = reader.result;
+            const res = await fetchAPI('uploadTemplateSurat', { token: window.appState.token, fileDataUrl: dataUrl, filename: templateSuratFile.name });
+            if (res.success) {
+                Swal.fire('Berhasil', 'Template Surat berhasil diupload dan disimpan!', 'success');
+                templateSuratFile = null;
+                document.getElementById('labelTemplateSurat').innerText = 'Pilih File Template';
+                document.getElementById('inputTemplateSurat').value = '';
+                if(!window.appConfig) window.appConfig = {};
+                window.appConfig.url_template_surat = res.url;
+            } else {
+                Swal.fire('Gagal', res.message || 'Terjadi kesalahan saat upload', 'error');
+            }
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        };
+        reader.onerror = function (error) {
+            Swal.fire('Gagal', 'Tidak dapat membaca file.', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        };
+    } catch(err) {
+        Swal.fire('Error', err.toString(), 'error');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
