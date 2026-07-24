@@ -139,11 +139,13 @@ async function loadMonitoringAbsensi() {
     if (currentUser && currentUser.role === 'admin') setActiveMenu('Manaj. Presensi');
     else setActiveMenu('Monitoring');
     showView('view-monitoring');
-    const tabMon = document.getElementById('tab-presensi-monitoring');
-    if (tabMon) {
-        if (currentUser && currentUser.role === 'admin') tabMon.classList.remove('hidden');
-        else tabMon.classList.add('hidden');
-    }
+    document.querySelectorAll('.tab-presensi-monitoring').forEach(tabMon => {
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru')) {
+            tabMon.classList.remove('hidden');
+        } else {
+            tabMon.classList.add('hidden');
+        }
+    });
 
     document.getElementById('monitoringDate').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -325,6 +327,13 @@ function loadRekapAbsensi() {
     else setActiveMenu('Monitoring');
     showView('view-rekap-absensi');
     document.getElementById('rekapEmptyState').classList.remove('hidden');
+    document.querySelectorAll('.tab-presensi-monitoring').forEach(tabMon => {
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru')) {
+            tabMon.classList.remove('hidden');
+        } else {
+            tabMon.classList.add('hidden');
+        }
+    });
     document.getElementById('rekapContainer').classList.add('hidden');
     document.getElementById('rekapLoading').classList.add('hidden');
     tableState.rekap.fullData = [];
