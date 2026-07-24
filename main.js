@@ -748,6 +748,7 @@ function initDashboard() {
         menuHTML += createItem('Monitoring', 'fa-eye', 'loadMonitoringAbsensi()');
         menuHTML += createItem('Scan Presensi', 'fa-qrcode', 'loadScanAbsensi()');
         menuHTML += createItem('Input Kasus Siswa', 'fa-exclamation-triangle', 'loadInputKasus()');
+        menuHTML += createItem('Profil Saya', 'fa-user-circle', 'showProfilGuruMobile()');
         loadGuruDashboard();
     } else if (currentUser.role === 'siswa') {
         menuHTML += createItem('Dashboard', 'fa-home', 'loadSiswaDashboard()', true);
@@ -1301,9 +1302,7 @@ function showProfilGuruMobile() {
             </div>
             <h3 class="font-bold text-xl text-gray-800 tracking-tight leading-tight">${namaGuru}</h3>
             <p class="text-[10px] font-bold text-purple-600 uppercase tracking-widest mt-1 bg-purple-50 inline-block px-3 py-1 rounded-full border border-purple-100">Akun Guru</p>
-        </div>
-
-        <div class="bg-white rounded-2xl p-1 mb-6 border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+          <div class="bg-white rounded-2xl p-1 mb-6 border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
             <div class="flex justify-between items-center p-3 border-b border-gray-50">
                 <div class="flex items-center gap-2"><i class="fas fa-chalkboard text-indigo-400"></i> <span class="text-[11px] font-bold text-gray-500 uppercase">Kelas</span></div>
                 <span class="text-sm font-extrabold text-gray-800 bg-gray-50 px-3 py-1 rounded-lg">${namaKelas}</span>
@@ -1314,16 +1313,69 @@ function showProfilGuruMobile() {
             </div>
         </div>
 
-        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center relative overflow-hidden">
+        <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center relative overflow-hidden mb-3">
             <div class="absolute -right-4 -top-4 text-indigo-100 opacity-50"><i class="fas fa-qrcode text-6xl"></i></div>
             <i class="fas fa-camera text-indigo-500 text-2xl mb-2 relative z-10"></i>
             <p class="text-xs font-medium text-indigo-800 leading-relaxed relative z-10">
                 Untuk memulai Presensi, silakan ketuk tombol <b class="text-indigo-600">Scan Kamera</b> berwarna ungu di bawah layar Anda.
             </p>
         </div>
+        
+        <button onclick="showUbahPasswordGuruModal()" class="w-full bg-teal-50 hover:bg-teal-100 text-teal-700 py-3 rounded-xl text-xs font-bold border border-teal-200 transition-colors flex items-center justify-center gap-2 shadow-sm">
+            <i class="fas fa-key"></i> Ubah Password Akun
+        </button>
     </div>
     `;
     showModal(modalContent);
+}
+
+// ============================================================
+
+function showUbahPasswordGuruModal() {
+    const content = `
+    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full relative overflow-hidden animate-slide-up mx-auto mt-20 md:mt-0">
+        <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-rose-600 bg-gray-50 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+        <div class="text-center mb-6">
+            <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-sm"><i class="fas fa-user-lock"></i></div>
+            <h3 class="font-bold text-xl text-gray-800">Ubah Password</h3>
+            <p class="text-xs text-gray-500 mt-1">Amankan akun guru Anda.</p>
+        </div>
+        <form onsubmit="submitUbahPasswordGuru(event)">
+            <label class="block mb-1 text-xs font-bold text-gray-500 uppercase">Password Lama</label>
+            <div class="relative group mb-4">
+                <input type="password" id="oldPassGuru" required class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3 pr-10 transition-all">
+                <button type="button" onclick="toggleInputPass('oldPassGuru', 'eyeOldPassG')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-indigo-600"><i class="fas fa-eye" id="eyeOldPassG"></i></button>
+            </div>
+            <label class="block mb-1 text-xs font-bold text-gray-500 uppercase">Password Baru</label>
+            <div class="relative group mb-6">
+                <input type="password" id="newPassGuru" required minlength="6" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3 pr-10 transition-all">
+                <button type="button" onclick="toggleInputPass('newPassGuru', 'eyeNewPassG')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-indigo-600"><i class="fas fa-eye" id="eyeNewPassG"></i></button>
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold shadow-lg transition transform active:scale-95">Simpan Password Baru</button>
+        </form>
+    </div>`;
+    showModal(content);
+}
+
+async function submitUbahPasswordGuru(e) {
+    e.preventDefault();
+    const oldPass = document.getElementById('oldPassGuru').value;
+    const newPass = document.getElementById('newPassGuru').value;
+
+    showLoading();
+    try {
+        const res = await fetchAPI('changeGuruPassword', { token: currentUser.token, oldPass: oldPass, newPass: newPass, username: currentUser.username });
+        hideLoading();
+        if (res.success) {
+            showAlert('success', res.message);
+            closeModal();
+        } else {
+            showAlert('error', res.message);
+        }
+    } catch (err) {
+        hideLoading();
+        showAlert('error', 'Koneksi error: ' + err);
+    }
 }
 
 // ============================================================
