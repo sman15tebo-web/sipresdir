@@ -1,7 +1,7 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbwIUG4O5zw9PHr7E9CpimbKj1o3R-CR7LhVHXLw4dMXqlDDVALZt7Er6LPHqy-TItyPYQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxcF_kdC_ByBKjN3j8TDke0iNMD41vpEV4PteXivIMEj-HZLU_OqRVqnD-nL5TqaPk7fA/exec";
 
 let currentUser = null,
     isSidebarOpen = true,
@@ -676,7 +676,15 @@ function scrollToTop() {
 function showPrivacyModal(e) {
     if (e) e.preventDefault();
     const modal = document.getElementById('privacyModal');
-    if (modal) { modal.classList.remove('hidden'); }
+    if (modal) {
+        modal.classList.remove('hidden');
+        const updateDate = document.getElementById('privacy-update-date');
+        if (updateDate) {
+            const date = new Date();
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            updateDate.textContent = monthNames[date.getMonth()] + " " + date.getFullYear();
+        }
+    }
 }
 
 function closePrivacyModal() {
