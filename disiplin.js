@@ -335,7 +335,7 @@ async function loadRekapKasus() {
 
     const tabDis = document.getElementById('tab-disiplin-rekap');
     if (tabDis) {
-        if (currentUser && currentUser.role === 'admin') tabDis.classList.remove('hidden');
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru')) tabDis.classList.remove('hidden');
         else tabDis.classList.add('hidden');
     }
 
