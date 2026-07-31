@@ -1,0 +1,21 @@
+{
+  "name": "SiPresDiR Plus",
+  "short_name": "SiPresDiR+",
+  "description": "Sistem Presensi Digital Realtime Plus",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F3F4F6",
+  "theme_color": "#738862",
+  "icons": [
+    {
+      "src": "./imgsipresdir.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./imgsipresdir.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
