@@ -7,6 +7,7 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>SiPresDiR Plus</title>
     <link rel="icon" type="image/png" href="./imgsipresdir.png">
+    <link rel="manifest" href="manifest.json">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -2409,6 +2410,25 @@
     <script src="main.js?v=15"></script>
     <script src="absensi.js?v=15"></script>
     <script src="disiplin.js?v=15"></script>
+
+    <!-- PWA Install Popup -->
+    <div id="pwaInstallPopup" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] p-4 transform translate-y-full transition-transform duration-300 z-[60] flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhfzGqA11LudTtI5aqUk93_GUJWPoHCR2uNbhgSgZhv71Bmx48aW6zBg7l7U6KoVNNmQpC7zai4T3KeV6DfH1VXfpwQDaxYPEiaCZ8opxte2Koje_yoSzejOD3eKTGt8tHeMuVVrldPZjsXCeRjUe1dbFibHnjpxZYcYlsGBz3YKr_ZU9E9n4z1y0dUrYXC/s425/logo%20sipresdir.png" alt="Logo" class="w-10 h-10 object-contain">
+            <div>
+                <h4 class="text-sm font-bold text-gray-800">SiPresDiR Plus</h4>
+                <p class="text-xs text-gray-500">Instal aplikasi untuk akses lebih cepat!</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="pwaCloseBtn" class="p-2 text-gray-400 hover:text-gray-600 transition">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+            <button id="pwaInstallBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition active:scale-95">
+                Instal
+            </button>
+        </div>
+    </div>
 
 </body>
 
