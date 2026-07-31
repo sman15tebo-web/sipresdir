@@ -2532,4 +2532,32 @@ document.addEventListener('DOMContentLoaded', () => {
             if(installPopup) installPopup.classList.add('translate-y-full');
         });
     }
+
+    // Deteksi khusus untuk pengguna iOS (iPhone/iPad)
+    const isIos = () => {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        return /iphone|ipad|ipod/.test(userAgent);
+    };
+    
+    // Mengecek apakah aplikasi belum di-install di iOS
+    const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+    if (isIos() && !isInStandaloneMode()) {
+        if (installPopup) {
+            const desc = installPopup.querySelector('p');
+            if (desc) {
+                desc.innerHTML = 'Ketuk ikon <i class="fas fa-share-square mx-1"></i> di bawah, lalu pilih <b>"Add to Home Screen"</b> untuk menginstal.';
+            }
+            
+            // Sembunyikan tombol instal Android karena iOS harus manual
+            if (installBtn) {
+                installBtn.classList.add('hidden');
+            }
+            
+            // Tampilkan popup setelah 3 detik
+            setTimeout(() => {
+                installPopup.classList.remove('translate-y-full');
+            }, 3000);
+        }
+    }
 });
