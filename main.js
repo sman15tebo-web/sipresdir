@@ -1,7 +1,7 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbxcF_kdC_ByBKjN3j8TDke0iNMD41vpEV4PteXivIMEj-HZLU_OqRVqnD-nL5TqaPk7fA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxAr2pGSs0S518Tm1_coGfjH00M01g1SmHI6HYp38F0ngUb3MtPDZ1oiFtcu1Tg-8hL4w/exec";
 
 let currentUser = null,
     isSidebarOpen = true,
@@ -2474,3 +2474,62 @@ async function uploadTemplateSuratBtn(btn) {
         btn.disabled = false;
     }
 }
+
+// ============================================================
+// PWA INSTALLATION LOGIC
+// ============================================================
+let deferredPrompt;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(registration => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      })
+      .catch(err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later.
+  deferredPrompt = e;
+  
+  // Show the install popup after 3 seconds
+  const installPopup = document.getElementById('pwaInstallPopup');
+  if(installPopup) {
+      setTimeout(() => {
+          installPopup.classList.remove('translate-y-full');
+      }, 3000);
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const installBtn = document.getElementById('pwaInstallBtn');
+    const closeBtn = document.getElementById('pwaCloseBtn');
+    const installPopup = document.getElementById('pwaInstallPopup');
+
+    if(installBtn) {
+        installBtn.addEventListener('click', async () => {
+          if(installPopup) installPopup.classList.add('translate-y-full');
+          if (deferredPrompt) {
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            // We've used the prompt, and can't use it again, throw it away
+            deferredPrompt = null;
+          }
+        });
+    }
+
+    if(closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            if(installPopup) installPopup.classList.add('translate-y-full');
+        });
+    }
+});
