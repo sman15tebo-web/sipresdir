@@ -68,11 +68,21 @@ async function onScanSuccess(decodedText) {
     const myKelas = currentUser ? currentUser.kelas : '';
 
     try {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        
         const result = await fetchAPI('scanAbsensi', {
             nisn: decodedText,
             role: myRole,
             kelasGuru: myKelas,
-            token: currentUser ? currentUser.token : null
+            token: currentUser ? currentUser.token : null,
+            clientDate: `${yyyy}-${mm}-${dd}`,
+            clientTime: `${hh}:${min}:${ss}`
         });
 
         if (result.success) {
