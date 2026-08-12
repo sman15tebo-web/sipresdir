@@ -346,12 +346,21 @@ async function loadRekapKasus() {
     const elDetail = document.getElementById('areaDetailSiswa');
     const elSum = document.getElementById('summaryKasusSiswa');
 
-    if (elAdmin) { elAdmin.classList.add('hidden'); elAdmin.classList.remove('flex'); }
-    if (elDetail) { elDetail.classList.add('hidden'); elDetail.classList.remove('flex'); }
-    if (elSum) { elSum.classList.add('hidden'); }
-
-    const tbL = document.getElementById('tbody-leaderboard-kasus');
-    if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat data...</td></tr>';
+    if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'guru')) {
+        if (elAdmin) { elAdmin.classList.remove('hidden'); elAdmin.classList.add('flex'); }
+        if (elDetail) { elDetail.classList.add('hidden'); elDetail.classList.remove('flex'); }
+        if (elSum) { elSum.classList.add('hidden'); }
+        
+        const tbL = document.getElementById('tbody-leaderboard-kasus');
+        if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat data...</td></tr>';
+    } else {
+        if (elAdmin) { elAdmin.classList.add('hidden'); elAdmin.classList.remove('flex'); }
+        if (elDetail) { elDetail.classList.remove('hidden'); elDetail.classList.add('flex'); }
+        if (elSum) { elSum.classList.remove('hidden'); }
+        
+        const tbH = document.getElementById('tbody-history-kasus');
+        if (tbH) tbH.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat riwayat...</td></tr>';
+    }
 
     try {
         const res = await fetchAPI('getRekapKasus', { token: currentUser.token });
