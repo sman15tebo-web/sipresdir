@@ -1,31 +1,38 @@
-const CACHE_NAME = 'sipresdir-pwa-v2.100';
-const urlsToCache = [
-  './',
-  './index.html',
-  './style.css',
-  './main.js',
-  './absensi.js',
-  './disiplin.js',
-  './imgsipresdir.png'
-];
+// Service Worker — Strategi: Network First untuk semua file
+// Otomatis selalu ambil versi terbaru dari server.
+// Cache diperbarui sendiri setiap berhasil fetch.
+// Tidak perlu ubah nomor versi secara manual.
+
+const CACHE_NAME = 'sipresdir-cache';
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
-  );
+  // Aktifkan segera tanpa menunggu tab lama ditutup
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  // Ambil kendali semua tab yang sedang buka tanpa perlu reload
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', event => {
+  // Hanya tangani request GET ke URL yang sama-origin
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
+    fetch(event.request)
+      .then(networkResponse => {
+        // Berhasil dari network — simpan ke cache sebagai backup offline
+        if (networkResponse && networkResponse.ok) {
+          const cloned = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
         }
-        return fetch(event.request);
+        return networkResponse;
+      })
+      .catch(() => {
+        // Gagal dari network (offline) — gunakan cache terakhir sebagai fallback
+        return caches.match(event.request);
       })
   );
 });
+
