@@ -1078,19 +1078,40 @@ async function loadGlobalConfig() {
         inputs.forEach(el => el.disabled = false);
         if (res.success) {
             const conf = res.data;
-            document.getElementById('conf_masuk_mulai').value = conf.jam_masuk_mulai || '06:00';
-            document.getElementById('conf_masuk_akhir').value = conf.jam_masuk_akhir || '07:15';
-            document.getElementById('conf_pulang_mulai').value = conf.jam_pulang_mulai || '15:00';
-            document.getElementById('conf_pulang_akhir').value = conf.jam_pulang_akhir || '18:00';
-            document.getElementById('conf_wfh_masuk_mulai').value = conf.wfh_masuk_mulai || '06:00';
-            document.getElementById('conf_wfh_masuk_akhir').value = conf.wfh_masuk_akhir || '08:00';
-            document.getElementById('conf_wfh_pulang_mulai').value = conf.wfh_pulang_mulai || '15:00';
-            document.getElementById('conf_wfh_pulang_akhir').value = conf.wfh_pulang_akhir || '18:00';
-            
-            document.getElementById('toggleLiburMinggu').checked = String(conf.libur_minggu) === 'true';
-            document.getElementById('toggleLiburSabtu').checked = String(conf.libur_sabtu) === 'true';
+            // Config lama (WFH)
+            const setV = (id, val, def) => { const el = document.getElementById(id); if(el) el.value = val || def; };
+            setV('conf_wfh_masuk_mulai', conf.wfh_masuk_mulai, '06:00');
+            setV('conf_wfh_masuk_akhir', conf.wfh_masuk_akhir, '08:00');
+            setV('conf_wfh_pulang_mulai', conf.wfh_pulang_mulai, '15:00');
+            setV('conf_wfh_pulang_akhir', conf.wfh_pulang_akhir, '18:00');
+            // Config baru per kelompok hari
+            setV('conf_sk_masuk_mulai', conf.seninkamis_masuk_mulai, '06:00');
+            setV('conf_sk_masuk_akhir', conf.seninkamis_masuk_akhir, '07:15');
+            setV('conf_sk_pulang_mulai', conf.seninkamis_pulang_mulai, '15:00');
+            setV('conf_sk_pulang_akhir', conf.seninkamis_pulang_akhir, '17:00');
+            setV('conf_jum_masuk_mulai', conf.jumat_masuk_mulai, '06:00');
+            setV('conf_jum_masuk_akhir', conf.jumat_masuk_akhir, '07:15');
+            setV('conf_jum_pulang_mulai', conf.jumat_pulang_mulai, '11:00');
+            setV('conf_jum_pulang_akhir', conf.jumat_pulang_akhir, '13:00');
+            setV('conf_sab_masuk_mulai', conf.sabtu_masuk_mulai, '06:00');
+            setV('conf_sab_masuk_akhir', conf.sabtu_masuk_akhir, '07:15');
+            setV('conf_sab_pulang_mulai', conf.sabtu_pulang_mulai, '12:00');
+            setV('conf_sab_pulang_akhir', conf.sabtu_pulang_akhir, '15:00');
+
+            const toggleLiburMinggu = document.getElementById('toggleLiburMinggu');
+            const toggleLiburSabtu = document.getElementById('toggleLiburSabtu');
+            if(toggleLiburMinggu) toggleLiburMinggu.checked = String(conf.libur_minggu) === 'true';
+            if(toggleLiburSabtu) toggleLiburSabtu.checked = String(conf.libur_sabtu) === 'true';
+
+            // Highlight tab hari ini secara otomatis
+            const todayDay = new Date().getDay(); // 0=Minggu, 1=Senin, ..., 5=Jumat, 6=Sabtu
+            if (todayDay === 5) switchWaktuTab('jumat');
+            else if (todayDay === 6) switchWaktuTab('sabtu');
+            else switchWaktuTab('seninkamis');
         }
-    } catch (e) { }
+    } catch (e) {
+        inputs.forEach(el => el.disabled = false);
+    }
 }
 
 window.handleWeekendToggle = function() {
@@ -1112,22 +1133,50 @@ window.handleWeekendToggle = function() {
     if (btn) saveGlobalConfig(btn);
 }
 
+window.switchWaktuTab = function(tab) {
+    const tabs = ['seninkamis', 'jumat', 'sabtu'];
+    tabs.forEach(t => {
+        const panel = document.getElementById('panel-' + t);
+        const btn = document.getElementById('tab-' + t);
+        if (!panel || !btn) return;
+        const isActive = (t === tab);
+        panel.classList.toggle('hidden', !isActive);
+        btn.classList.toggle('text-indigo-600', isActive);
+        btn.classList.toggle('border-indigo-600', isActive);
+        btn.classList.toggle('bg-indigo-50/40', isActive);
+        btn.classList.toggle('text-gray-500', !isActive);
+        btn.classList.toggle('border-transparent', !isActive);
+    });
+}
+
 async function saveGlobalConfig(btnElement) {
     const originalText = btnElement.innerHTML;
     btnElement.disabled = true;
     btnElement.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menyimpan...';
 
+    const getV = (id, def) => { const el = document.getElementById(id); return el ? el.value : def; };
+
     const newConfig = {
-        jam_masuk_mulai: document.getElementById('conf_masuk_mulai').value,
-        jam_masuk_akhir: document.getElementById('conf_masuk_akhir').value,
-        jam_pulang_mulai: document.getElementById('conf_pulang_mulai').value,
-        jam_pulang_akhir: document.getElementById('conf_pulang_akhir').value,
-        wfh_masuk_mulai: document.getElementById('conf_wfh_masuk_mulai').value,
-        wfh_masuk_akhir: document.getElementById('conf_wfh_masuk_akhir').value,
-        wfh_pulang_mulai: document.getElementById('conf_wfh_pulang_mulai').value,
-        wfh_pulang_akhir: document.getElementById('conf_wfh_pulang_akhir').value,
+        // Config WFH
+        wfh_masuk_mulai: getV('conf_wfh_masuk_mulai', '06:00'),
+        wfh_masuk_akhir: getV('conf_wfh_masuk_akhir', '08:00'),
+        wfh_pulang_mulai: getV('conf_wfh_pulang_mulai', '15:00'),
+        wfh_pulang_akhir: getV('conf_wfh_pulang_akhir', '18:00'),
         libur_minggu: document.getElementById('toggleLiburMinggu').checked ? 'true' : 'false',
-        libur_sabtu: document.getElementById('toggleLiburSabtu').checked ? 'true' : 'false'
+        libur_sabtu: document.getElementById('toggleLiburSabtu').checked ? 'true' : 'false',
+        // Config per kelompok hari (Tatap Muka)
+        seninkamis_masuk_mulai: getV('conf_sk_masuk_mulai', '06:00'),
+        seninkamis_masuk_akhir: getV('conf_sk_masuk_akhir', '07:15'),
+        seninkamis_pulang_mulai: getV('conf_sk_pulang_mulai', '15:00'),
+        seninkamis_pulang_akhir: getV('conf_sk_pulang_akhir', '17:00'),
+        jumat_masuk_mulai: getV('conf_jum_masuk_mulai', '06:00'),
+        jumat_masuk_akhir: getV('conf_jum_masuk_akhir', '07:15'),
+        jumat_pulang_mulai: getV('conf_jum_pulang_mulai', '11:00'),
+        jumat_pulang_akhir: getV('conf_jum_pulang_akhir', '13:00'),
+        sabtu_masuk_mulai: getV('conf_sab_masuk_mulai', '06:00'),
+        sabtu_masuk_akhir: getV('conf_sab_masuk_akhir', '07:15'),
+        sabtu_pulang_mulai: getV('conf_sab_pulang_mulai', '12:00'),
+        sabtu_pulang_akhir: getV('conf_sab_pulang_akhir', '15:00')
     };
 
     try {
