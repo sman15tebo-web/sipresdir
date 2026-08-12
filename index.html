@@ -740,9 +740,10 @@
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2 justify-center md:justify-end">
                                     <div class="flex items-center gap-2">
-                                        <input type="date" id="filterMulaiDetail" class="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" title="Mulai Tanggal">
-                                        <span class="text-gray-400 text-xs">-</span>
-                                        <input type="date" id="filterAkhirDetail" class="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" title="Sampai Tanggal">
+                                        <input type="month" id="filterBulanDetail" class="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" title="Pilih Bulan dan Tahun">
+                                        <select id="filterJenisDetail" class="bg-white border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2" title="Jenis Pelanggaran">
+                                            <option value="">Semua Jenis Pelanggaran</option>
+                                        </select>
                                     </div>
                                     <button onclick="applyFilterDetailKasus()" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700 transition" title="Terapkan Filter"><i class="fas fa-filter"></i></button>
                                     <button onclick="cetakPDFDetailKasus()" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-rose-700 transition"><i class="fas fa-file-pdf"></i> <span class="hidden sm:inline ml-1">PDF</span></button>
@@ -2402,9 +2403,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script src="main.js?v=16"></script>
-    <script src="absensi.js?v=16"></script>
-    <script src="disiplin.js?v=16"></script>
+    <script src="main.js?v=18"></script>
+    <script src="absensi.js?v=18"></script>
+    <script src="disiplin.js?v=18"></script>
 
     <!-- PWA Install Popup -->
     <div id="pwaInstallPopup" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] p-4 transform translate-y-full transition-transform duration-300 z-[60] flex items-center justify-between">
