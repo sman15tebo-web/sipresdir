@@ -322,6 +322,9 @@ async function submitKasusSiswa(e) {
 // ============================================================
 window.kasusHistoryData = [];
 window.kasusLeaderboardData = [];
+window.kasusLeaderboardFiltered = [];
+window.kasusLeaderboardPage = 1;
+window.kasusLeaderboardLimit = 10;
 window.currentDetailNisn = "";
 window.currentDetailNama = "";
 window.currentDetailKelas = "";
@@ -367,7 +370,9 @@ async function loadRekapKasus() {
                 document.getElementById('areaAdminUtama').classList.remove('hidden');
                 document.getElementById('areaAdminUtama').classList.add('flex');
 
-                renderLeaderboardKasus(res.leaderboard);
+                window.kasusLeaderboardFiltered = res.leaderboard;
+                window.kasusLeaderboardPage = 1;
+                renderLeaderboardPaginated();
             } else {
                 document.getElementById('summaryKasusSiswa').classList.remove('hidden');
                 document.getElementById('areaDetailSiswa').classList.remove('hidden');
@@ -399,7 +404,7 @@ async function loadRekapKasus() {
     } catch (e) { showAlert('error', 'Gagal terhubung ke server'); }
 }
 
-function renderLeaderboardKasus(data) {
+function renderLeaderboardKasus(data, startIdx = 0) {
     const tbody = document.getElementById('tbody-leaderboard-kasus');
     if (!tbody) return;
     if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400 italic">Belum ada kasus pelanggaran.</td></tr>'; return; }
@@ -407,7 +412,7 @@ function renderLeaderboardKasus(data) {
     tbody.innerHTML = data.map((d, i) => {
         return `
         <tr class="hover:bg-rose-50/40 transition border-b border-gray-50">
-            <td class="p-3 text-center align-middle text-gray-400 text-xs">${i + 1}</td>
+            <td class="p-3 text-center align-middle text-gray-400 text-xs">${startIdx + i + 1}</td>
             <td class="p-3 whitespace-nowrap min-w-[140px]">
                 <div class="font-bold text-xs text-gray-800 break-words leading-tight line-clamp-2" title="${d.nama}">${d.nama}</div>
                 <div class="text-[9px] text-gray-500 font-mono mt-0.5">${d.nisn}</div>
@@ -421,6 +426,41 @@ function renderLeaderboardKasus(data) {
     }).join('');
 }
 
+function changeLimitLeaderboard(val) {
+    window.kasusLeaderboardLimit = val === 'all' ? Infinity : parseInt(val);
+    window.kasusLeaderboardPage = 1;
+    renderLeaderboardPaginated();
+}
+
+function changePageLeaderboard(dir) {
+    window.kasusLeaderboardPage += dir;
+    renderLeaderboardPaginated();
+}
+
+function renderLeaderboardPaginated() {
+    const limit = window.kasusLeaderboardLimit;
+    const total = window.kasusLeaderboardFiltered.length;
+    const maxPage = limit === Infinity ? 1 : Math.ceil(total / limit);
+    
+    if (window.kasusLeaderboardPage > maxPage && maxPage > 0) window.kasusLeaderboardPage = maxPage;
+    if (window.kasusLeaderboardPage < 1) window.kasusLeaderboardPage = 1;
+
+    const startIdx = (window.kasusLeaderboardPage - 1) * limit;
+    const endIdx = limit === Infinity ? total : startIdx + limit;
+    const pagedData = window.kasusLeaderboardFiltered.slice(startIdx, endIdx);
+
+    renderLeaderboardKasus(pagedData, startIdx);
+    
+    const infoEl = document.getElementById('info-leaderboard');
+    if(infoEl) infoEl.textContent = `Menampilkan ${total === 0 ? 0 : startIdx + 1}-${Math.min(endIdx, total)} dari ${total} data`;
+    
+    const btnPrev = document.getElementById('btn-prev-leaderboard');
+    if(btnPrev) btnPrev.disabled = window.kasusLeaderboardPage <= 1;
+    
+    const btnNext = document.getElementById('btn-next-leaderboard');
+    if(btnNext) btnNext.disabled = window.kasusLeaderboardPage >= maxPage || maxPage === 0;
+}
+
 function applyFilterLeaderboard() {
     const kelas = document.getElementById('filterKelasKasus').value;
     const cari = document.getElementById('cariNamaKasus').value.toLowerCase();
@@ -429,7 +469,9 @@ function applyFilterLeaderboard() {
     if (kelas) filtered = filtered.filter(d => d.kelas === kelas);
     if (cari) filtered = filtered.filter(d => d.nama.toLowerCase().includes(cari) || d.nisn.toLowerCase().includes(cari));
 
-    renderLeaderboardKasus(filtered);
+    window.kasusLeaderboardFiltered = filtered;
+    window.kasusLeaderboardPage = 1;
+    renderLeaderboardPaginated();
 }
 
 function exportExcelKasus() {
