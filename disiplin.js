@@ -399,7 +399,13 @@ async function loadRekapKasus() {
                 renderHistoryKasus(res.history);
             }
         } else {
-            showAlert('error', res.message);
+            if (res.message.includes('antrean') || res.message.includes('sibuk')) {
+                const tbL = document.getElementById('tbody-leaderboard-kasus');
+                if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-amber-600"><i class="fas fa-circle-notch fa-spin text-amber-500 text-xl mb-2 block"></i> Sistem sedang memuat data. Mohon tunggu...</td></tr>';
+                setTimeout(loadRekapKasus, 3000);
+            } else {
+                showAlert('error', res.message);
+            }
         }
     } catch (e) { showAlert('error', 'Gagal terhubung ke server'); }
 }
@@ -501,6 +507,21 @@ function lihatDetailKasus(nisn, nama, kelas, poin) {
     window.currentDetailNisn = nisn; window.currentDetailNama = nama; window.currentDetailKelas = kelas;
 
     const detailHistory = window.kasusHistoryData.filter(d => d.nisn === nisn);
+    
+    // Populate dropdown jenis pelanggaran berdasarkan history siswa
+    const jenisSet = new Set(detailHistory.map(d => d.pelanggaran));
+    let jenisHtml = '<option value="">Semua Jenis Pelanggaran</option>';
+    Array.from(jenisSet).sort().forEach(j => { jenisHtml += `<option value="${j}">${j}</option>`; });
+    
+    const filterJenisEl = document.getElementById('filterJenisDetail');
+    if (filterJenisEl) {
+        filterJenisEl.innerHTML = jenisHtml;
+        filterJenisEl.value = "";
+    }
+    
+    const filterBulanEl = document.getElementById('filterBulanDetail');
+    if (filterBulanEl) filterBulanEl.value = "";
+
     renderHistoryKasus(detailHistory);
 }
 
@@ -512,14 +533,24 @@ function kembaliKeLeaderboard() {
 }
 
 function applyFilterDetailKasus() {
-    const tglMulai = document.getElementById('filterMulaiDetail').value;
-    const tglAkhir = document.getElementById('filterAkhirDetail').value;
+    const bulan = document.getElementById('filterBulanDetail').value;
+    const jenis = document.getElementById('filterJenisDetail').value;
 
     let nisnToFilter = currentUser.role === 'siswa' ? currentUser.nisn : window.currentDetailNisn;
     let filtered = window.kasusHistoryData.filter(d => d.nisn === nisnToFilter);
 
-    if (tglMulai) filtered = filtered.filter(d => d.tanggal >= tglMulai);
-    if (tglAkhir) filtered = filtered.filter(d => d.tanggal <= tglAkhir);
+    if (bulan) {
+        filtered = filtered.filter(d => {
+            if (!d.tanggal) return false;
+            return d.tanggal.startsWith(bulan);
+        });
+    }
+
+    if (jenis) {
+        filtered = filtered.filter(d => d.pelanggaran === jenis);
+    }
+
+    renderHistoryKasus(filtered);
 
     renderHistoryKasus(filtered);
 }
