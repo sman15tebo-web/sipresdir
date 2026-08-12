@@ -3,6 +3,7 @@
 // ============================================================
 const API_URL = "https://script.google.com/macros/s/AKfycbxAr2pGSs0S518Tm1_coGfjH00M01g1SmHI6HYp38F0ngUb3MtPDZ1oiFtcu1Tg-8hL4w/exec";
 
+
 let currentUser = null,
     isSidebarOpen = true,
     appCache = { siswa: null, guru: null },
@@ -934,7 +935,7 @@ async function loadAdminDashboard() {
 
         // 2. Get Advanced Stats (Charts & Leaderboards)
         const advRes = await fetchAPI('getDashboardAdvancedStats', { token: currentUser.token });
-        if(advRes.success) {
+        if (advRes.success) {
             const adv = advRes.data;
             renderAdminAttendanceLineChart(adv.attendanceTrend);
             renderAdminViolationPieChart(adv.violationPie);
@@ -952,7 +953,7 @@ function renderAdminAttendanceLineChart(historyData) {
     const ctx = document.getElementById('adminAttendanceChart');
     if (!ctx) return;
     if (adminChartInstance) adminChartInstance.destroy();
-    
+
     // Sort array so oldest is first
     const sortedData = historyData.slice().reverse();
     const labels = sortedData.map(d => d.date);
@@ -1002,7 +1003,7 @@ function renderAdminViolationPieChart(pieData) {
 
     const dataArr = [pieData.ringan, pieData.sedang, pieData.berat];
     // If all zero, render empty
-    if(dataArr.every(x => x === 0)) dataArr[0] = 0.001; 
+    if (dataArr.every(x => x === 0)) dataArr[0] = 0.001;
 
     adminViolationChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -1029,19 +1030,19 @@ function renderAdminViolationPieChart(pieData) {
 
 function renderLeaderboardKelas(topClasses) {
     const tbody = document.getElementById('leaderboardKelas');
-    if(!tbody) return;
+    if (!tbody) return;
     tbody.innerHTML = '';
-    if(topClasses.length === 0) {
+    if (topClasses.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-xs text-gray-500">Belum ada data absensi hari ini.</td></tr>`;
         return;
     }
-    
+
     topClasses.forEach((c, index) => {
         const tr = document.createElement('tr');
-        let medal = `<span class="text-gray-500 font-bold">#${index+1}</span>`;
-        if(index === 0) medal = `<i class="fas fa-medal text-yellow-400 text-lg"></i>`;
-        else if(index === 1) medal = `<i class="fas fa-medal text-gray-400 text-lg"></i>`;
-        else if(index === 2) medal = `<i class="fas fa-medal text-orange-400 text-lg"></i>`;
+        let medal = `<span class="text-gray-500 font-bold">#${index + 1}</span>`;
+        if (index === 0) medal = `<i class="fas fa-medal text-yellow-400 text-lg"></i>`;
+        else if (index === 1) medal = `<i class="fas fa-medal text-gray-400 text-lg"></i>`;
+        else if (index === 2) medal = `<i class="fas fa-medal text-orange-400 text-lg"></i>`;
 
         tr.innerHTML = `
             <td class="px-4 py-3 whitespace-nowrap text-center">${medal}</td>
@@ -1062,9 +1063,9 @@ function renderLeaderboardKelas(topClasses) {
 
 function renderLeaderboardSiswa(topSiswa) {
     const tbody = document.getElementById('leaderboardSiswa');
-    if(!tbody) return;
+    if (!tbody) return;
     tbody.innerHTML = '';
-    if(topSiswa.length === 0) {
+    if (topSiswa.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-4 text-center text-xs text-gray-500">Siswa teladan, belum ada catatan pelanggaran.</td></tr>`;
         return;
     }
@@ -1073,7 +1074,7 @@ function renderLeaderboardSiswa(topSiswa) {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-rose-50 cursor-pointer transition";
         tr.onclick = () => openRaporKedisiplinan(s.nisn);
-        
+
         tr.innerHTML = `
             <td class="px-4 py-3">
                 <div class="text-sm font-bold text-gray-800 truncate max-w-[150px]">${s.nama}</div>
@@ -1089,23 +1090,23 @@ function renderLeaderboardSiswa(topSiswa) {
 }
 
 async function openRaporKedisiplinan(nisn) {
-    if(!nisn) return;
+    if (!nisn) return;
     Swal.fire({ title: 'Memuat Rapor...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
         const res = await fetchAPI('getStudentDisciplineReport', { token: currentUser.token, nisn: nisn });
         Swal.close();
-        if(res.success) {
+        if (res.success) {
             const data = res.data;
             const bio = data.biodata;
             const abs = data.absensi;
-            
+
             let ketPoin = "SANGAT BAIK"; let warna = "text-emerald-600"; let bg = "bg-emerald-50 border-emerald-200";
-            if(data.poin > 10) { ketPoin = "PERINGATAN"; warna = "text-yellow-600"; bg = "bg-yellow-50 border-yellow-200"; }
-            if(data.poin > 25) { ketPoin = "RAWAN"; warna = "text-orange-600"; bg = "bg-orange-50 border-orange-200"; }
-            if(data.poin > 50) { ketPoin = "TINDAK LANJUT"; warna = "text-rose-600"; bg = "bg-rose-50 border-rose-200"; }
+            if (data.poin > 10) { ketPoin = "PERINGATAN"; warna = "text-yellow-600"; bg = "bg-yellow-50 border-yellow-200"; }
+            if (data.poin > 25) { ketPoin = "RAWAN"; warna = "text-orange-600"; bg = "bg-orange-50 border-orange-200"; }
+            if (data.poin > 50) { ketPoin = "TINDAK LANJUT"; warna = "text-rose-600"; bg = "bg-rose-50 border-rose-200"; }
 
             let kasusHtml = '';
-            if(data.kasus.length === 0) {
+            if (data.kasus.length === 0) {
                 kasusHtml = `<div class="text-center p-6 text-sm text-gray-400 italic">Siswa belum memiliki catatan pelanggaran.</div>`;
             } else {
                 data.kasus.forEach(k => {
@@ -1207,7 +1208,7 @@ async function openRaporKedisiplinan(nisn) {
         } else {
             Swal.fire('Gagal!', res.message, 'error');
         }
-    } catch(e) {
+    } catch (e) {
         Swal.fire('Error', e.toString(), 'error');
     }
 }
@@ -1215,7 +1216,7 @@ async function openRaporKedisiplinan(nisn) {
 async function loadGuruDashboard() {
     stopAndBack(false); setActiveMenu('Dashboard'); showView('view-admin-dashboard');
     document.getElementById('adminDateDisplay').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    
+
     const myClass = currentUser.role === 'guru' ? currentUser.kelas : null;
     const titleEl = document.querySelector('#view-admin-dashboard h2');
     if (myClass) {
@@ -1242,14 +1243,14 @@ async function loadGuruDashboard() {
         }
 
         const advRes = await fetchAPI('getDashboardAdvancedStats', { token: currentUser.token });
-        if(advRes.success) {
+        if (advRes.success) {
             const adv = advRes.data;
             renderAdminAttendanceLineChart(adv.attendanceTrend);
             renderAdminViolationPieChart(adv.violationPie);
             renderLeaderboardKelas(adv.topClasses);
             renderLeaderboardSiswa(adv.topViolators);
         }
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
     }
 }
@@ -2403,7 +2404,7 @@ function processFullRestoreJSON(input) {
 
 
 // --- [BARU] Fungsi Auto-Pad NISN 10 Digit ---
-window.padNisn = function(el) {
+window.padNisn = function (el) {
     let val = el.value.trim();
     if (val.length > 0 && val.length < 10) {
         let diff = 10 - val.length;
@@ -2439,11 +2440,11 @@ async function uploadTemplateSuratBtn(btn) {
         Swal.fire('Pilih File', 'Silakan pilih file template terlebih dahulu!', 'warning');
         return;
     }
-    
+
     let originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload...';
     btn.disabled = true;
-    
+
     try {
         let reader = new FileReader();
         reader.readAsDataURL(templateSuratFile);
@@ -2455,7 +2456,7 @@ async function uploadTemplateSuratBtn(btn) {
                 templateSuratFile = null;
                 document.getElementById('labelTemplateSurat').innerText = 'Pilih File Template';
                 document.getElementById('inputTemplateSurat').value = '';
-                if(!window.appConfig) window.appConfig = {};
+                if (!window.appConfig) window.appConfig = {};
                 window.appConfig.url_template_surat = res.url;
             } else {
                 Swal.fire('Gagal', res.message || 'Terjadi kesalahan saat upload', 'error');
@@ -2468,7 +2469,7 @@ async function uploadTemplateSuratBtn(btn) {
             btn.innerHTML = originalText;
             btn.disabled = false;
         };
-    } catch(err) {
+    } catch (err) {
         Swal.fire('Error', err.toString(), 'error');
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -2481,30 +2482,67 @@ async function uploadTemplateSuratBtn(btn) {
 let deferredPrompt;
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(registration => {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      })
-      .catch(err => {
-        console.log('ServiceWorker registration failed: ', err);
-      });
-  });
+    window.addEventListener('load', async () => {
+        try {
+            // Langkah 1: Unregister SEMUA service worker lama yang mungkin masih aktif
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const reg of registrations) {
+                // Jika bukan sw.js terbaru kita (atau SW lama masih ada), paksa unregister
+                if (!reg.active || !reg.active.scriptURL.includes('sw.js')) {
+                    await reg.unregister();
+                }
+            }
+
+            // Langkah 2: Hapus semua cache lama (v1, v2, dst.) kecuali cache terbaru kita
+            const CURRENT_CACHE = 'sipresdir-cache';
+            const cacheKeys = await caches.keys();
+            await Promise.all(
+                cacheKeys
+                    .filter(key => key !== CURRENT_CACHE)
+                    .map(key => {
+                        console.log('[SW] Menghapus cache lama:', key);
+                        return caches.delete(key);
+                    })
+            );
+
+            // Langkah 3: Daftarkan service worker terbaru
+            const registration = await navigator.serviceWorker.register('sw.js');
+
+            // Langkah 4: Jika ada SW baru yang menunggu, aktifkan segera (skipWaiting)
+            if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                if (newWorker) {
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // SW baru siap — reload otomatis untuk tampilkan versi terbaru
+                            window.location.reload();
+                        }
+                    });
+                }
+            });
+
+        } catch (err) {
+            console.warn('[SW] Registrasi gagal:', err);
+        }
+    });
 }
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Prevent the mini-infobar from appearing on mobile
-  e.preventDefault();
-  // Stash the event so it can be triggered later.
-  deferredPrompt = e;
-  
-  // Show the install popup after 3 seconds
-  const installPopup = document.getElementById('pwaInstallPopup');
-  if(installPopup) {
-      setTimeout(() => {
-          installPopup.classList.remove('translate-y-full');
-      }, 3000);
-  }
+    // Prevent the mini-infobar from appearing on mobile
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+
+    // Show the install popup after 3 seconds
+    const installPopup = document.getElementById('pwaInstallPopup');
+    if (installPopup) {
+        setTimeout(() => {
+            installPopup.classList.remove('translate-y-full');
+        }, 3000);
+    }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2512,24 +2550,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = document.getElementById('pwaCloseBtn');
     const installPopup = document.getElementById('pwaInstallPopup');
 
-    if(installBtn) {
+    if (installBtn) {
         installBtn.addEventListener('click', async () => {
-          if(installPopup) installPopup.classList.add('translate-y-full');
-          if (deferredPrompt) {
-            // Show the install prompt
-            deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
-            // We've used the prompt, and can't use it again, throw it away
-            deferredPrompt = null;
-          }
+            if (installPopup) installPopup.classList.add('translate-y-full');
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                // We've used the prompt, and can't use it again, throw it away
+                deferredPrompt = null;
+            }
         });
     }
 
-    if(closeBtn) {
+    if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            if(installPopup) installPopup.classList.add('translate-y-full');
+            if (installPopup) installPopup.classList.add('translate-y-full');
         });
     }
 
@@ -2538,7 +2576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const userAgent = window.navigator.userAgent.toLowerCase();
         return /iphone|ipad|ipod/.test(userAgent);
     };
-    
+
     // Mengecek apakah aplikasi belum di-install di iOS
     const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
 
@@ -2548,12 +2586,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (desc) {
                 desc.innerHTML = 'Ketuk ikon <i class="fas fa-share-square mx-1"></i> di bawah, lalu pilih <b>"Add to Home Screen"</b> untuk menginstal.';
             }
-            
+
             // Sembunyikan tombol instal Android karena iOS harus manual
             if (installBtn) {
                 installBtn.classList.add('hidden');
             }
-            
+
             // Tampilkan popup setelah 3 detik
             setTimeout(() => {
                 installPopup.classList.remove('translate-y-full');
