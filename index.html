@@ -709,7 +709,20 @@
                                 </div>
                             </div>
 
-                            <div class="overflow-x-auto border border-gray-100 rounded-xl">
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-bold text-gray-500 uppercase">Tampil:</span>
+                                    <select id="limitLeaderboard" onchange="changeLimitLeaderboard(this.value)" class="text-xs p-1.5 rounded border border-gray-200 focus:ring-rose-500">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="all">Semua</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto border border-gray-100 rounded-t-xl">
                                 <table class="w-full text-left">
                                     <thead
                                         class="bg-rose-50 text-rose-700 text-[10px] uppercase font-bold border-b border-rose-100">
@@ -724,6 +737,13 @@
                                     <tbody id="tbody-leaderboard-kasus"
                                         class="divide-y divide-gray-50 bg-white text-xs"></tbody>
                                 </table>
+                            </div>
+                            <div class="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 border-t-0 rounded-b-xl">
+                                <span id="info-leaderboard" class="text-[10px] text-gray-500 font-bold">Menampilkan 0 data</span>
+                                <div class="flex space-x-2">
+                                    <button onclick="changePageLeaderboard(-1)" id="btn-prev-leaderboard" class="px-3 py-1 bg-white border border-gray-200 rounded text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50 font-bold">Prev</button>
+                                    <button onclick="changePageLeaderboard(1)" id="btn-next-leaderboard" class="px-3 py-1 bg-white border border-gray-200 rounded text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50 font-bold">Next</button>
+                                </div>
                             </div>
                         </div>
 
@@ -2443,4 +2463,3 @@
 </body>
 
 </html>
-
