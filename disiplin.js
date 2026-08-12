@@ -329,12 +329,27 @@ window.currentDetailNisn = "";
 window.currentDetailNama = "";
 window.currentDetailKelas = "";
 
-async function loadRekapKasus() {
-    stopAndBack(false);
-    if (currentUser.role === 'siswa') setActiveMenu('Dashboard'); 
-    else if (currentUser.role === 'admin') setActiveMenu('Manaj. Disiplin');
-    else setActiveMenu('Rekap Pelanggaran');
-    showView('view-rekap-kasus');
+// ID timer retry global — bisa dibatalkan kapan saja jika user pindah menu
+window._rekapRetryTimer = null;
+
+async function loadRekapKasus(isRetry = false) {
+    // Selalu batalkan timer retry sebelumnya (cegah ghost navigation)
+    if (window._rekapRetryTimer) {
+        clearTimeout(window._rekapRetryTimer);
+        window._rekapRetryTimer = null;
+    }
+
+    if (!isRetry) {
+        stopAndBack(false);
+        if (currentUser.role === 'siswa') setActiveMenu('Dashboard'); 
+        else if (currentUser.role === 'admin') setActiveMenu('Manaj. Disiplin');
+        else setActiveMenu('Rekap Pelanggaran');
+        showView('view-rekap-kasus');
+    } else {
+        // Jika ini retry dan user sudah berpindah halaman, batalkan
+        const view = document.getElementById('view-rekap-kasus');
+        if (!view || view.classList.contains('hidden')) return;
+    }
 
     const tabDis = document.getElementById('tab-disiplin-rekap');
     if (tabDis) {
@@ -352,18 +367,23 @@ async function loadRekapKasus() {
         if (elSum) { elSum.classList.add('hidden'); }
         
         const tbL = document.getElementById('tbody-leaderboard-kasus');
-        if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat data...</td></tr>';
+        if (tbL && !isRetry) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat data...</td></tr>';
     } else {
         if (elAdmin) { elAdmin.classList.add('hidden'); elAdmin.classList.remove('flex'); }
         if (elDetail) { elDetail.classList.remove('hidden'); elDetail.classList.add('flex'); }
         if (elSum) { elSum.classList.remove('hidden'); }
         
         const tbH = document.getElementById('tbody-history-kasus');
-        if (tbH) tbH.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat riwayat...</td></tr>';
+        if (tbH && !isRetry) tbH.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin text-rose-500 text-xl mb-2 block"></i> Memuat riwayat...</td></tr>';
     }
 
     try {
         const res = await fetchAPI('getRekapKasus', { token: currentUser.token });
+
+        // Setelah await selesai, cek sekali lagi apakah user masih di halaman ini
+        const viewNow = document.getElementById('view-rekap-kasus');
+        if (!viewNow || viewNow.classList.contains('hidden')) return;
+
         if (res.success) {
             const isAdminGuru = (res.role === 'admin' || res.role === 'guru');
             window.kasusHistoryData = res.history;
@@ -409,14 +429,23 @@ async function loadRekapKasus() {
             }
         } else {
             if (res.message.includes('antrean') || res.message.includes('sibuk')) {
+                // Jadwalkan retry dan simpan ID-nya agar bisa dibatalkan
                 const tbL = document.getElementById('tbody-leaderboard-kasus');
                 if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-amber-600"><i class="fas fa-circle-notch fa-spin text-amber-500 text-xl mb-2 block"></i> Sistem sedang memuat data. Mohon tunggu...</td></tr>';
-                setTimeout(loadRekapKasus, 3000);
+                window._rekapRetryTimer = setTimeout(() => loadRekapKasus(true), 3000);
             } else {
                 showAlert('error', res.message);
+                const tbL = document.getElementById('tbody-leaderboard-kasus');
+                if (tbL) tbL.innerHTML = `<tr><td colspan="5" class="p-12 text-center text-red-500"><i class="fas fa-times-circle mr-2"></i>Gagal memuat data: ${res.message}</td></tr>`;
             }
         }
-    } catch (e) { showAlert('error', 'Gagal terhubung ke server'); }
+    } catch (e) {
+        const viewNow = document.getElementById('view-rekap-kasus');
+        if (!viewNow || viewNow.classList.contains('hidden')) return;
+        showAlert('error', 'Gagal terhubung ke server');
+        const tbL = document.getElementById('tbody-leaderboard-kasus');
+        if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-red-500"><i class="fas fa-times-circle mr-2"></i>Gagal terhubung ke server. Silakan muat ulang.</td></tr>';
+    }
 }
 
 function renderLeaderboardKasus(data, startIdx = 0) {
