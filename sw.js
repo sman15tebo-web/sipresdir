@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sipresdir-pwa-v2';
+const CACHE_NAME = 'sipresdir-pwa-v2.100';
 const urlsToCache = [
   './',
   './index.html',
