@@ -431,18 +431,20 @@ async function loadRekapKasus(isRetry = false) {
             if (res.message.includes('antrean') || res.message.includes('sibuk')) {
                 // Jadwalkan retry dan simpan ID-nya agar bisa dibatalkan
                 const tbL = document.getElementById('tbody-leaderboard-kasus');
-                if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-amber-600"><i class="fas fa-circle-notch fa-spin text-amber-500 text-xl mb-2 block"></i> Sistem sedang memuat data. Mohon tunggu...</td></tr>';
+                if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-blue-500"><i class="fas fa-circle-notch fa-spin text-blue-400 text-xl mb-2 block"></i> Sistem sedang memuat data. Mohon tunggu...</td></tr>';
+                const tbH = document.getElementById('tbody-history-kasus');
+                if (tbH) tbH.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-blue-500"><i class="fas fa-circle-notch fa-spin text-blue-400 text-xl mb-2 block"></i> Sistem sedang memuat data. Mohon tunggu...</td></tr>';
                 window._rekapRetryTimer = setTimeout(() => loadRekapKasus(true), 3000);
             } else {
-                showAlert('error', res.message);
+                // Tidak pakai alert popup — tampilkan pesan di dalam tabel saja
                 const tbL = document.getElementById('tbody-leaderboard-kasus');
-                if (tbL) tbL.innerHTML = `<tr><td colspan="5" class="p-12 text-center text-red-500"><i class="fas fa-times-circle mr-2"></i>Gagal memuat data: ${res.message}</td></tr>`;
+                if (tbL) tbL.innerHTML = `<tr><td colspan="5" class="p-12 text-center text-blue-500"><i class="fas fa-info-circle mr-2"></i>${res.message}</td></tr>`;
             }
         }
     } catch (e) {
         const viewNow = document.getElementById('view-rekap-kasus');
         if (!viewNow || viewNow.classList.contains('hidden')) return;
-        showAlert('error', 'Gagal terhubung ke server');
+        // Tidak tampilkan alert - cukup update pesan di tabel
         const tbL = document.getElementById('tbody-leaderboard-kasus');
         if (tbL) tbL.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-red-500"><i class="fas fa-times-circle mr-2"></i>Gagal terhubung ke server. Silakan muat ulang.</td></tr>';
     }
@@ -461,10 +463,10 @@ function renderLeaderboardKasus(data, startIdx = 0) {
                 <div class="font-bold text-xs text-gray-800 break-words leading-tight line-clamp-2" title="${d.nama}">${d.nama}</div>
                 <div class="text-[9px] text-gray-500 font-mono mt-0.5">${d.nisn}</div>
             </td>
-            <td class="p-3 text-center"><span class="px-2 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-bold">${d.kelas}</span></td>
+            <td class="p-3 text-center whitespace-nowrap"><span class="px-2 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-gray-600 text-[10px] font-bold whitespace-nowrap">${d.kelas}</span></td>
             <td class="p-3 text-center whitespace-nowrap"><span class="font-black text-rose-600 text-sm bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100 whitespace-nowrap">${d.totalPoin}</span></td>
             <td class="p-3 text-center">
-                <button onclick="lihatDetailKasus('${d.nisn}', '${d.nama.replace(/'/g, "\\'")}', '${d.kelas}', ${d.totalPoin})" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200 px-3 py-1.5 rounded-lg text-[10px] font-bold transition shadow-sm whitespace-nowrap"><i class="fas fa-eye mr-1"></i> Lihat Rekap</button>
+                <button onclick="lihatDetailKasus('${d.nisn}', '${d.nama.replace(/'/g, "\\'")}', '${d.kelas}', ${d.totalPoin})" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-200 px-3 py-1.5 rounded-lg text-[10px] font-bold transition shadow-sm whitespace-nowrap"><i class="fas fa-eye mr-1"></i> Buka</button>
             </td>
         </tr>`;
     }).join('');
