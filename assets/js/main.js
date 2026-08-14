@@ -1,33 +1,8 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-// Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
-const TENANT_CONFIG = {
-    // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
-    "demo": "https://script.google.com/macros/s/AKfycbw_EssUp4sCVylBaIzu7e1xbkDgayFn-Br8sTsxmoBYyA7mSFL0mlGath9B_QxOfovmkA/exec",
-    "sekolah2": "https://script.google.com/macros/s/AKfycb.../exec",
-    "sekolah3": "https://script.google.com/macros/s/AKfycb.../exec",
-    "default": "https://script.google.com/macros/s/AKfycbw_EssUp4sCVylBaIzu7e1xbkDgayFn-Br8sTsxmoBYyA7mSFL0mlGath9B_QxOfovmkA/exec" // HARUS ADA!
-};
+const API_URL = "https://script.google.com/macros/s/AKfycbyNGFtsBXJenIMbn5IK1519PvWfBgaKTh_WRnwgKsurTuarnrra1lPrYS9VxmA0z85Dgw/exec";
 
-let API_URL = '';
-function initTenant() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tenantId = urlParams.get('id') || localStorage.getItem('activeTenant') || 'default';
-
-    if (TENANT_CONFIG[tenantId]) {
-        API_URL = TENANT_CONFIG[tenantId];
-        localStorage.setItem('activeTenant', tenantId);
-    } else if (TENANT_CONFIG['default']) {
-        API_URL = TENANT_CONFIG['default'];
-        console.warn("Kode tenant tidak ditemukan, fallback ke default");
-    } else {
-        // Jika tidak ada default, pakai key pertama di config
-        const firstKey = Object.keys(TENANT_CONFIG)[0];
-        API_URL = TENANT_CONFIG[firstKey];
-    }
-}
-initTenant();
 
 let currentUser = null,
     isSidebarOpen = true,
