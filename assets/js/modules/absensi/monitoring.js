@@ -43,8 +43,14 @@ async function loadMonitoringAbsensi(forceDate = false) {
     const myClass = (currentUser && currentUser.role === 'guru') ? currentUser.kelas : null;
     const dropdown = document.getElementById('filterKelasMonitoring');
     const selectedClass = normalizeClassValue(dropdown ? (dropdown.value || myClass || '') : (myClass || ''));
-    const routeKey = `${targetDate || 'today'}|${selectedClass || 'all'}|${currentUser ? currentUser.role : 'guest'}`;
+    const requestedDate = targetDate || getTanggalHariIniMonitoring();
+    const routeKey = `${requestedDate}|${selectedClass || 'all'}|${currentUser ? currentUser.role : 'guest'}`;
+    const isDateChanged = tableState.monitoring.lastRequestedDate && tableState.monitoring.lastRequestedDate !== requestedDate;
+    if (isDateChanged || forceDate) {
+        tableState.monitoring.cacheKey = '';
+    }
     const shouldReload = forceDate || tableState.monitoring.cacheKey !== routeKey || !Array.isArray(tableState.monitoring.fullData) || tableState.monitoring.fullData.length === 0;
+    tableState.monitoring.lastRequestedDate = requestedDate;
 
     document.getElementById('monitoringDate').textContent = textDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
