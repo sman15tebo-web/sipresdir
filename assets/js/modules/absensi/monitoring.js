@@ -96,6 +96,7 @@ async function loadMonitoringAbsensi(forceDate = false) {
                         nama: item.nama || '-',
                         nisn: String(item.nisn || '').replace(/'/g, '').trim(),
                         kelas: item.kelas || '-',
+                        tanggal: item.tanggal || targetDate,
                         jamDatang: item.jam_datang || '-',
                         jamPulang: item.jam_pulang || '-',
                         status: item.status || 'Belum Absen',
@@ -156,10 +157,11 @@ function renderMonitoringRows(data, startIdx) {
         const rawStatus = d?.status || 'Belum Absen';
         const normalizedStatus = (rawStatus === 'Terlambat') ? 'Hadir' : rawStatus;
         let statusColor = 'bg-gray-100 text-gray-600';
-        if (normalizedStatus === 'Hadir') statusColor = 'bg-green-100 text-green-700';
+        if (normalizedStatus === 'Hadir' || normalizedStatus === 'Tepat Waktu') statusColor = 'bg-green-100 text-green-700';
         else if (normalizedStatus === 'Izin') statusColor = 'bg-blue-100 text-blue-700';
         else if (normalizedStatus === 'Sakit') statusColor = 'bg-yellow-100 text-yellow-700';
         else if (normalizedStatus === 'Alpa') statusColor = 'bg-red-100 text-red-700';
+        else if (normalizedStatus === 'Belum Absen') statusColor = 'bg-gray-100 text-gray-600';
 
         const safeNama = nama.replace(/'/g, "\\'");
         const safeKelas = kelas.replace(/'/g, "\\'");
@@ -265,17 +267,17 @@ async function changeStatus(nisn, nama, kelas, tanggal, selectElement) {
     let targetDate = document.getElementById('tgl_export_harian') ? document.getElementById('tgl_export_harian').value : null;
 
     try {
-        const res = await fetchAPI('updateAbsensiStatus', { token: token, nisn: nisn, nama: nama, kelas: kelas, tanggal: targetDate, newStatus: newStatus });
+        const safeStatus = (newStatus === 'Terlambat') ? 'Hadir' : newStatus;
+        const res = await fetchAPI('updateAbsensiStatus', { token: token, nisn: nisn, nama: nama, kelas: kelas, tanggal: targetDate, newStatus: safeStatus });
         selectElement.disabled = false;
         selectElement.style.opacity = '1';
 
         if (res.success) {
-            const normalizedStatus = (newStatus === 'Terlambat') ? 'Hadir' : newStatus;
             let newColor = 'bg-gray-100 text-gray-600';
-            if (normalizedStatus === 'Hadir') newColor = 'bg-green-100 text-green-700';
-            else if (normalizedStatus === 'Izin') newColor = 'bg-blue-100 text-blue-700';
-            else if (normalizedStatus === 'Sakit') newColor = 'bg-yellow-100 text-yellow-700';
-            else if (normalizedStatus === 'Alpa') newColor = 'bg-red-100 text-red-700';
+            if (safeStatus === 'Hadir') newColor = 'bg-green-100 text-green-700';
+            else if (safeStatus === 'Izin') newColor = 'bg-blue-100 text-blue-700';
+            else if (safeStatus === 'Sakit') newColor = 'bg-yellow-100 text-yellow-700';
+            else if (safeStatus === 'Alpa') newColor = 'bg-red-100 text-red-700';
 
             selectElement.className = `text-xs font-bold py-1.5 px-2 rounded-lg border-0 focus:ring-2 focus:ring-indigo-500 shadow-sm appearance-none text-center w-32 cursor-pointer ${newColor}`;
         } else {
