@@ -593,7 +593,7 @@ let cropperInstance = null;
 let targetCropInput = '';
 let targetCropPreview = '';
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
     const dateElement = document.getElementById('currentDateDisplay');
     if (dateElement) {
         dateElement.textContent = new Date().toLocaleDateString('id-ID', {
@@ -625,8 +625,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setupLogoUploadListeners();
 
-    initAppConfigs();
-    checkSession();
+    await initAppConfigs();
+    await checkSession();
 });
 
 function setupLogoUploadListeners() {
