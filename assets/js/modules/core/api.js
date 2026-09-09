@@ -1,12 +1,12 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwmG7M8FZbS4J0AWlEuR3PTaGpaLkNKq7O-oSYVqE01-JcrSl7SULZ0MyizMlb0wveA/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzbOaXmTKe3TobQ2ndQY07_YU2Q_nu5atOO5JRoGwBdJIdv1mD-O-5bWPELoy6Q5g/exec';
 
 // Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
 const TENANT_CONFIG = {
     // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
-    "sipresdir": "https://script.google.com/macros/s/AKfycbwmG7M8FZbS4J0AWlEuR3PTaGpaLkNKq7O-oSYVqE01-JcrSl7SULZ0MyizMlb0wveA/exec",
+    "sipresdir": "https://script.google.com/macros/s/AKfycbzbOaXmTKe3TobQ2ndQY07_YU2Q_nu5atOO5JRoGwBdJIdv1mD-O-5bWPELoy6Q5g/exec",
     "sekolah2": DEFAULT_API_URL,
     "sekolah3": DEFAULT_API_URL,
     "default": DEFAULT_API_URL // HARUS ADA!
@@ -1028,6 +1028,7 @@ async function handleLogin(event) {
             document.getElementById('loginPage').classList.add('hidden');
             document.getElementById('dashboardContainer').classList.remove('hidden');
             await preloadRoleViews(result.role);
+            await initAppConfigs();
             initDashboard();
         } else {
             const errorDiv = document.getElementById('loginError');
@@ -1082,6 +1083,7 @@ async function checkSession() {
             document.getElementById('dashboardContainer')?.classList.remove('hidden');
             if (window.innerWidth < 768) document.getElementById('sidebar')?.classList.add('-translate-x-full');
             await preloadRoleViews(sessionData.role);
+            await initAppConfigs();
             initDashboard();
             return;
         } catch (e) {
