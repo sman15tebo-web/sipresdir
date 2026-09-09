@@ -710,6 +710,16 @@ function handleTableClassFilter(type, value) {
     if (tableState[type]) {
         tableState[type].classFilter = value;
         tableState[type].page = 1;
+
+        if (type === 'monitoring') {
+            const dateInput = document.getElementById('tgl_export_harian');
+            if (dateInput && dateInput.value) {
+                tableState.monitoring.cacheKey = '';
+                loadMonitoringAbsensi(true);
+                return;
+            }
+        }
+
         processTableData(type);
     }
 }
@@ -1012,7 +1022,6 @@ async function handleLogin(event) {
         hideLoading();
 
         if (result.success) {
-            alert("SUKSES: " + JSON.stringify(result));
             currentUser = result;
             setSession(result);
             if (!(await requirePasswordChange(result))) return;
@@ -1021,7 +1030,6 @@ async function handleLogin(event) {
             await preloadRoleViews(result.role);
             initDashboard();
         } else {
-            alert("GAGAL: " + JSON.stringify(result));
             const errorDiv = document.getElementById('loginError');
             if (errorDiv) {
                 document.getElementById('errorText').textContent = result.message;
