@@ -168,10 +168,10 @@
                                     </div>
                                 </div>
                                 <div class="p-5 border-b border-gray-100">
-                                    <form id="formTambahLibur" onsubmit="event.preventDefault(); focusScheduleForm('formTambahLibur')" class="flex flex-col md:flex-row gap-3 items-end">
+                                    <form id="formTambahLibur" onsubmit="handleAddLibur(event)" class="flex flex-col md:flex-row gap-3 items-end">
                                         <div class="flex-1 w-full"><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal</label><input type="date" name="tanggal" required="" class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
                                         <div class="flex-[2] w-full"><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Keterangan</label><input type="text" name="keterangan" required="" placeholder="Contoh: Maulid Nabi / Cuti Bersama" class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
-                                        <button type="button" onclick="focusScheduleForm('formTambahLibur')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-emerald-700 transition w-full md:w-auto"><i class="fas fa-plus mr-1"></i> Tambah</button>
+                                        <button type="submit" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-emerald-700 transition w-full md:w-auto"><i class="fas fa-plus mr-1"></i> Tambah</button>
                                     </form>
                                 </div>
                                 <div class="overflow-x-auto">
@@ -255,7 +255,7 @@
                                     </div>
                                 </div>
                                 <div class="p-5 border-b border-gray-100">
-                                    <form id="formTambahWfh" onsubmit="event.preventDefault(); focusScheduleForm('formTambahWfh')" class="flex flex-col md:flex-row gap-3 items-end">
+                                    <form id="formTambahWfh" onsubmit="handleAddWfh(event)" class="flex flex-col md:flex-row gap-3 items-end">
                                         <div class="flex-1 w-full">
                                             <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal
                                                 WFH</label>
@@ -266,7 +266,7 @@
                                                 WFH</label>
                                             <input type="text" name="keterangan" required="" placeholder="Contoh: WFH Asesmen / Belajar Mandiri" class="w-full border-gray-300 rounded-lg text-sm p-2.5">
                                         </div>
-                                        <button type="button" onclick="focusScheduleForm('formTambahWfh')" class="bg-amber-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-amber-700 transition w-full md:w-auto"><i class="fas fa-plus mr-1"></i> Tambah</button>
+                                        <button type="submit" class="bg-amber-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-amber-700 transition w-full md:w-auto"><i class="fas fa-plus mr-1"></i> Tambah</button>
                                     </form>
                                 </div>
                                 <div class="overflow-x-auto flex-1">
