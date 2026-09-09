@@ -1021,9 +1021,17 @@ async function handleLogin(event) {
             initDashboard();
         } else {
             const errorDiv = document.getElementById('loginError');
-            document.getElementById('errorText').textContent = result.message;
-            errorDiv.classList.remove('hidden');
-            setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+            if (errorDiv) {
+                document.getElementById('errorText').textContent = result.message;
+                errorDiv.classList.remove('hidden');
+                setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Login Gagal',
+                text: result.message || 'Username atau password salah.',
+                confirmButtonColor: '#3085d6'
+            });
         }
     } catch (error) {
         hideLoading();
