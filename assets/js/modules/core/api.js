@@ -208,7 +208,9 @@ function stripLargeFields(data) {
 async function initAppConfigs() {
     try {
         // Load dari cache lokal dulu (tanpa logo besar) agar UI terasa cepat
-        const cachedConfig = localStorage.getItem('appConfigCache');
+        const cachedConfig = window.electronAPI
+            ? (localStorage.getItem('appConfigFullCache') || localStorage.getItem('appConfigCache'))
+            : localStorage.getItem('appConfigCache');
         if (cachedConfig) {
             try {
                 const result = JSON.parse(cachedConfig);
@@ -223,6 +225,9 @@ async function initAppConfigs() {
         if (result) {
             // Simpan ke cache HANYA field teks (tanpa logo base64 besar)
             try { localStorage.setItem('appConfigCache', JSON.stringify(stripLargeFields(result))); } catch (e) { console.warn('Cache config gagal:', e); }
+            if (window.electronAPI) {
+                try { localStorage.setItem('appConfigFullCache', JSON.stringify(result)); } catch (e) { console.warn('Cache branding offline gagal:', e); }
+            }
             applyAppConfigToUI(result);
         }
 
@@ -1127,6 +1132,7 @@ async function executeLogout() {
     document.getElementById('dashboardContainer').classList.add('hidden');
     await showView('loginPage');
     document.getElementById('loginPage').classList.remove('hidden');
+    await initAppConfigs();
     restoreRememberedLogin();
 
     if (document.getElementById('username')) document.getElementById('username').value = localStorage.getItem('lastLoginUsername') || '';
