@@ -159,7 +159,7 @@ async function executeSync() {
         Swal.fire('Perhatian', 'Link Exec tidak boleh kosong.', 'warning');
         return;
     }
-    
+
     localStorage.setItem('customSyncLink', newLink);
     const statusDiv = document.getElementById('syncStatus');
     statusDiv.classList.remove('hidden');
@@ -170,54 +170,69 @@ async function executeSync() {
         return;
     }
 
-    try {
-        // 1. Ambil data lokal yang belum tersinkronisasi
-        statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-blue-100 text-blue-800 border border-blue-200';
-        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 1/4 Mempersiapkan data lokal...';
-        const prepRes = await window.electronAPI.queryDB('prepareSyncData', { token: currentUser?.token });
-        if (!prepRes.success) throw new Error('Gagal menyiapkan data lokal: ' + prepRes.message);
+    let lastError = null;
+    const maxAttempts = 3;
 
-        // 1.5 Login ke server online menggunakan config admin
-        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengautentikasi dengan server online...';
-        const config = await window.electronAPI.getOfflineConfig();
-        const loginRes = await fetch(newLink, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'login', username: config.admin.username, password: config.admin.password }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const loginData = await loginRes.json();
-        if (!loginRes.ok || !loginData.success) {
-            throw new Error('Gagal login ke server online: ' + (loginData.message || 'Kredensial tidak valid.'));
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            const queueStatus = await window.electronAPI.queryDB('getSyncQueueStatus', { token: currentUser?.token });
+            if (queueStatus.success && (queueStatus.data?.pending || queueStatus.data?.failed)) {
+                statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-amber-100 text-amber-800 border border-amber-200';
+                statusDiv.innerHTML = `<i class="fas fa-sync fa-spin mr-2"></i> Percobaan ${attempt}/${maxAttempts}: Antrian sinkronisasi ada data tertunda, akan diproses ulang...`;
+            }
+
+            statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-blue-100 text-blue-800 border border-blue-200';
+            statusDiv.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${attempt}/${maxAttempts} Mempersiapkan data lokal...`;
+            const prepRes = await window.electronAPI.queryDB('prepareSyncData', { token: currentUser?.token });
+            if (!prepRes.success) throw new Error('Gagal menyiapkan data lokal: ' + prepRes.message);
+
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengautentikasi dengan server online...';
+            const config = await window.electronAPI.getOfflineConfig();
+            const loginRes = await fetch(newLink, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'login', username: config.admin.username, password: config.admin.password }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const loginData = await loginRes.json();
+            if (!loginRes.ok || !loginData.success) {
+                throw new Error('Gagal login ke server online: ' + (loginData.message || 'Kredensial tidak valid.'));
+            }
+            const onlineToken = loginData.token;
+
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengunggah & Mengunduh data ke server...';
+            const response = await fetch(newLink, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: prepRes.data }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || 'Server tidak merespons dengan benar.');
+
+            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses pembaruan dari server...';
+            const procRes = await window.electronAPI.queryDB('processSyncResponse', { token: currentUser?.token, masterData: result.masterData, syncedIds: result.syncedIds });
+            if (!procRes.success) throw new Error('Gagal memproses respons server: ' + procRes.message);
+
+            statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-green-100 text-green-800 border border-green-200';
+            const counts = result.counts || {};
+            statusDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Sinkronisasi berhasil. Siswa: ${counts.siswa ?? '-'}, Absensi: ${counts.absensi ?? '-'}, Konsekuensi: ${counts.jenisKonsekuensi ?? '-'} / riwayat ${counts.riwayatKonsekuensi ?? '-'}. Memuat ulang aplikasi...`;
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+            return;
+        } catch (error) {
+            lastError = error;
+            if (attempt < maxAttempts) {
+                statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-amber-100 text-amber-800 border border-amber-200';
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> Gagal pada percobaan ${attempt}. Mencoba ulang (${attempt + 1}/${maxAttempts})...`;
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                continue;
+            }
         }
-        const onlineToken = loginData.token;
-
-        // 2. Kirim ke Server
-        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 2/4 Mengunggah & Mengunduh data ke server...';
-        const response = await fetch(newLink, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: prepRes.data }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.message || 'Server tidak merespons dengan benar.');
-
-        // 3. Simpan balasan dari server ke SQLite
-        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 3/4 Memproses pembaruan dari server...';
-        const procRes = await window.electronAPI.queryDB('processSyncResponse', { token: currentUser?.token, masterData: result.masterData, syncedIds: result.syncedIds });
-        if (!procRes.success) throw new Error('Gagal memproses respons server: ' + procRes.message);
-
-        // 4. Selesai
-        statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-green-100 text-green-800 border border-green-200';
-        statusDiv.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Sinkronisasi 2-Arah berhasil! Memuat ulang aplikasi...';
-        
-        setTimeout(() => {
-            window.location.reload();
-        }, 2000);
-
-    } catch (error) {
-        statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-red-100 text-red-800 border border-red-200';
-        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Sinkronisasi gagal: ${error.message}`;
     }
+
+    statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-red-100 text-red-800 border border-red-200';
+    statusDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Sinkronisasi gagal setelah ${maxAttempts} percobaan: ${lastError?.message || 'Koneksi atau server tidak stabil.'}`;
 }
 
 window.openSyncModal = openSyncModal;
