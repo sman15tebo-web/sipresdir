@@ -6,7 +6,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzdYe_8LuXbPAc4
 // Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
 const TENANT_CONFIG = {
     // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
-    "sipresdir": DEFAULT_API_URL,
+    "sipresdir": "https://script.google.com/macros/s/AKfycbzdYe_8LuXbPAc4pHHXgpmiSFhN9K7n5Izb71LIA4ApqKdKwylgP9Q4zMMmkqjKe21a/exec",
     "sekolah2": DEFAULT_API_URL,
     "sekolah3": DEFAULT_API_URL,
     "default": DEFAULT_API_URL // HARUS ADA!
@@ -91,7 +91,7 @@ async function fetchAPI(action, params = {}) {
         const endpoint = API_URL || DEFAULT_API_URL;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 detik timeout
-        
+
         const response = await fetch(endpoint, {
             method: 'POST',
             body: JSON.stringify(payload),
@@ -99,7 +99,7 @@ async function fetchAPI(action, params = {}) {
             redirect: 'follow',
             signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
 
         const text = await response.text();
@@ -1059,7 +1059,7 @@ async function checkSession() {
             }
             currentUser = sessionData;
             if (!(await requirePasswordChange(sessionData))) return;
-            
+
             document.getElementById('loginPage')?.classList.add('hidden');
             document.getElementById('dashboardContainer')?.classList.remove('hidden');
             if (window.innerWidth < 768) document.getElementById('sidebar')?.classList.add('-translate-x-full');
