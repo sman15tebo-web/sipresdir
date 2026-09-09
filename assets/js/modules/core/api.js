@@ -1,12 +1,12 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzdYe_8LuXbPAc4pHHXgpmiSFhN9K7n5Izb71LIA4ApqKdKwylgP9Q4zMMmkqjKe21a/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwmG7M8FZbS4J0AWlEuR3PTaGpaLkNKq7O-oSYVqE01-JcrSl7SULZ0MyizMlb0wveA/exec';
 
 // Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
 const TENANT_CONFIG = {
     // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
-    "sipresdir": "https://script.google.com/macros/s/AKfycbzdYe_8LuXbPAc4pHHXgpmiSFhN9K7n5Izb71LIA4ApqKdKwylgP9Q4zMMmkqjKe21a/exec",
+    "sipresdir": "https://script.google.com/macros/s/AKfycbwmG7M8FZbS4J0AWlEuR3PTaGpaLkNKq7O-oSYVqE01-JcrSl7SULZ0MyizMlb0wveA/exec",
     "sekolah2": DEFAULT_API_URL,
     "sekolah3": DEFAULT_API_URL,
     "default": DEFAULT_API_URL // HARUS ADA!
