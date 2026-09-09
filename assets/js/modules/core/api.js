@@ -630,7 +630,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     setupLogoUploadListeners();
 
-    await initAppConfigs();
     await checkSession();
 });
 
@@ -1075,11 +1074,10 @@ async function checkSession() {
     const sessionData = getSession();
     if (sessionData && sessionData.success) {
         try {
-            // Session lama sebelum enforcement password harus login ulang agar status password diverifikasi server.
+            // Sesi lama tidak memiliki penanda ini; perlakukan sebagai sesi valid biasa.
             if (typeof sessionData.mustChangePassword !== 'boolean') {
-                localStorage.removeItem('absensiAppSession');
-                await showView('loginPage');
-                return;
+                sessionData.mustChangePassword = false;
+                setSession(sessionData);
             }
             currentUser = sessionData;
             if (!(await requirePasswordChange(sessionData))) return;
@@ -1103,6 +1101,7 @@ async function checkSession() {
     document.getElementById('dashboardContainer')?.classList.add('hidden');
     await showView('loginPage');
     document.getElementById('loginPage')?.classList.remove('hidden');
+    initAppConfigs();
     restoreRememberedLogin();
 }
 
