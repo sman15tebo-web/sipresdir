@@ -1,6 +1,8 @@
 // ============================================================
 // LOGIKA KELOLA HARI LIBUR & WFH
 // ============================================================
+const pendingScheduleDrafts = { libur: [], wfh: [] };
+
 async function loadKelolaAbsen() {
     stopAndBack(false); setActiveMenu('Kelola Presensi'); showView('view-kelola-absen');
     document.getElementById('tbody-libur').innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat...</td></tr>';
@@ -20,6 +22,8 @@ async function loadKelolaAbsen() {
         }
 
     } catch (e) { }
+    pendingScheduleDrafts.libur = [];
+    pendingScheduleDrafts.wfh = [];
     loadGlobalConfig();
 }
 
@@ -164,14 +168,18 @@ async function saveScheduleSection(btnElement, formId, successMessage) {
         showAlert('warning', 'Isi tanggal dan keterangan secara lengkap, atau kosongkan keduanya.');
         return;
     }
+    const type = formId === 'formTambahLibur' ? 'libur' : 'wfh';
     const savedConfig = await saveGlobalConfig(btnElement, true);
     if (!savedConfig) return;
-    if (date && note) {
-        const action = formId === 'formTambahLibur' ? 'addHariLibur' : 'addJadwalWFH';
-        const res = await fetchAPI(action, { tanggal: date, keterangan: note });
+    const drafts = [...pendingScheduleDrafts[type]];
+    if (date && note) drafts.push({ tanggal: date, keterangan: note });
+    for (const draft of drafts) {
+        const action = type === 'libur' ? 'addHariLibur' : 'addJadwalWFH';
+        const res = await fetchAPI(action, { tanggal: draft.tanggal, keterangan: draft.keterangan });
         if (!res.success) { showAlert('error', res.message); return; }
-        form.reset();
     }
+    pendingScheduleDrafts[type].length = 0;
+    if (date && note) form.reset();
     await loadKelolaAbsen();
     showAlert('success', successMessage);
 }
@@ -283,22 +291,10 @@ async function saveUpdateLibur(e) {
 
 async function handleAddLibur(e) {
     e.preventDefault();
-    showLoading();
     const fd = new FormData(e.target);
-    try {
-        const res = await fetchAPI('addHariLibur', {
-            tanggal: fd.get('tanggal'),
-            keterangan: fd.get('keterangan')
-        });
-        hideLoading();
-        if (res.success) {
-            e.target.reset();
-            loadKelolaAbsen();
-            showAlert('success', 'Jadwal libur ditambahkan');
-        } else {
-            showAlert('error', res.message);
-        }
-    } catch (err) { }
+    pendingScheduleDrafts.libur.push({ tanggal: fd.get('tanggal'), keterangan: String(fd.get('keterangan') || '').trim() });
+    e.target.reset();
+    renderLiburRows([...tableState.libur.fullData, ...pendingScheduleDrafts.libur], 0);
 }
 
 async function deleteLiburConfirm(tgl) {
@@ -352,13 +348,11 @@ function renderWfhRows(data, startIdx) {
 }
 
 async function handleAddWfh(e) {
-    e.preventDefault(); showLoading(); const fd = new FormData(e.target);
-    try {
-        const res = await fetchAPI('addJadwalWFH', { tanggal: fd.get('tanggal'), keterangan: fd.get('keterangan') });
-        hideLoading();
-        if (res.success) { e.target.reset(); loadKelolaAbsen(); showAlert('success', 'Jadwal WFH ditambahkan'); }
-        else showAlert('error', res.message);
-    } catch (err) { hideLoading(); }
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    pendingScheduleDrafts.wfh.push({ tanggal: fd.get('tanggal'), keterangan: String(fd.get('keterangan') || '').trim() });
+    e.target.reset();
+    renderWfhRows([...tableState.wfh.fullData, ...pendingScheduleDrafts.wfh], 0);
 }
 
 async function deleteWfhConfirm(tgl) {
