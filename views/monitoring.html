@@ -1,0 +1,86 @@
+<div id="view-monitoring" class="view-section animate-fade-in">
+                    <div id="tab-presensi-monitoring" class="tab-presensi-monitoring flex items-end space-x-1 border-b border-gray-200 mb-6 bg-white px-1 pt-1 rounded-t-xl overflow-x-auto shadow-sm">
+                        <button onclick="loadKelolaAbsen()" class="px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-t-lg transition-all whitespace-nowrap admin-only-tab"><i class="fas fa-calendar-times mr-2"></i>Kelola Libur/WFH</button>
+                        <button onclick="loadMonitoringAbsensi()" class="px-5 py-2.5 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50/50 rounded-t-lg transition-all whitespace-nowrap"><i class="fas fa-eye mr-2"></i>Monitor Presensi</button>
+                        <button onclick="loadRekapAbsensi()" class="px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-t-lg transition-all whitespace-nowrap"><i class="fas fa-file-alt mr-2"></i>Laporan Presensi</button>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-gray-50/30">
+                            <div>
+                                <h3 class="font-bold text-sm text-gray-800 mb-1">Monitoring Kehadiran</h3>
+                                <p class="text-xs text-gray-500 font-medium">Data Realtime: <span id="monitoringDate" class="text-indigo-600 font-bold">...</span></p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start md:justify-end mt-2 md:mt-0">
+                                <input type="date" id="tgl_export_harian" onchange="loadMonitoringAbsensi(true)" class="flex-1 md:flex-none border border-gray-300 text-gray-600 px-2 py-1.5 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm" title="Pilih Tanggal untuk Download">
+                                <button onclick="loadMonitoringAbsensi(true)" id="btnTampilkanMonitoring" class="flex-1 md:flex-none justify-center bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-indigo-700 transition flex items-center gap-2">
+                                    <i class="fas fa-search"></i> <span class="hidden sm:inline">Tampilkan</span>
+                                </button>
+                                <button onclick="processDailyExportCustom(this)" id="btnExportMonitoring" class="flex-1 md:flex-none justify-center bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-700 transition flex items-center gap-2">
+                                    <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">Export Excel</span>
+                                </button>
+                                <button onclick="showMatrixModal()" class="flex-1 md:flex-none justify-center bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-purple-700 transition flex items-center gap-2">
+                                    <i class="fas fa-th"></i> <span class="hidden sm:inline">Matriks</span>
+                                </button>
+                                <button onclick="refreshData('monitoring')" class="bg-white text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-50 transition" title="Perbarui Data">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-white border-b border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div class="flex flex-col sm:flex-row items-center gap-2 text-xs w-full md:w-auto">
+                                <div class="flex items-center gap-2 w-full sm:w-auto">
+                                    <span class="text-gray-500 font-bold hidden sm:inline">Show</span>
+                                    <select onchange="handleTableLimit('monitoring', this.value)" class="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 w-full sm:w-auto">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                        <option value="all">Semua</option>
+                                    </select>
+                                </div>
+                                <select id="filterKelasMonitoring" onchange="handleTableClassFilter('monitoring', this.value)" class="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 font-bold w-full sm:w-auto shadow-sm">
+                                    <option value="">Semua Kelas</option>
+                                </select>
+                                <select onchange="handleTableStatusFilter('monitoring', this.value)" class="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 font-bold w-full sm:w-auto shadow-sm">
+                                    <option value="">Semua Status</option>
+                                    <option value="Hadir">Hadir (Hijau)</option>
+                                    <option value="Sakit">Sakit (Kuning)</option>
+                                    <option value="Izin">Izin (Biru)</option>
+                                    <option value="Alpa">Alpa (Merah)</option>
+                                    <option value="Belum Absen">Belum Absen (Abu)</option>
+                                </select>
+                            </div>
+                            <div class="relative w-full md:w-64">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><i class="fas fa-search text-gray-400 text-xs"></i></div>
+                                <input type="text" oninput="handleTableSearch('monitoring', this.value)" class="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 p-2 transition-all" placeholder="Cari Nama / Kelas...">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-gray-50 text-gray-500 text-[10px] uppercase font-semibold">
+                                    <tr>
+                                        <th class="p-4 text-center w-10">No</th>
+                                        <th class="p-4 text-center w-28">Tanggal</th>
+                                        <th class="p-4 sticky left-0 bg-gray-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                            Siswa</th>
+                                        <th class="p-4 text-center">Kelas</th>
+                                        <th class="p-4 text-center">Jam Datang</th>
+                                        <th class="p-4 text-center">Jam Pulang</th>
+                                        <th class="p-4 text-center">Keterangan Waktu</th>
+                                        <th class="p-4 text-center">Status Kehadiran</th>
+                                        <th class="p-4 text-center">Bukti Izin/Sakit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-monitoring" class="divide-y divide-gray-50 bg-white text-sm"></tbody>
+                            </table>
+                        </div>
+                        <div id="footer-monitoring" class="p-4 border-t border-gray-100 bg-gray-50/30 flex justify-between items-center text-xs text-gray-500">
+                            <span id="info-monitoring">Menampilkan 0 data</span>
+                            <div class="flex gap-1">
+                                <button onclick="changePage('monitoring', -1)" class="px-3 py-1 bg-white border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 transition" id="btn-prev-monitoring">Prev</button>
+                                <button onclick="changePage('monitoring', 1)" class="px-3 py-1 bg-white border border-gray-200 rounded hover:bg-gray-100 disabled:opacity-50 transition" id="btn-next-monitoring">Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>

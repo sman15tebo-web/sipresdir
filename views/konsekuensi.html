@@ -1,0 +1,97 @@
+<div id="view-konsekuensi" class="view-section hidden animate-fade-in">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
+                            <i class="fas fa-gavel text-indigo-600"></i> Konsekuensi Harian
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">Mengelola penugasan konsekuensi bagi siswa yang terlambat
+                            hari ini.</p>
+                    </div>
+
+                    <!-- TABS -->
+                    <div class="flex border-b border-gray-200 mb-6 space-x-2">
+                        <button onclick="switchKonsekuensiTab('jenis')" id="konsBtnTab_jenis" class="kons-tab-btn py-2.5 px-5 border-b-2 border-indigo-600 text-indigo-600 font-bold text-sm transition-colors flex items-center gap-2">
+                            <i class="fas fa-list-ul"></i> Jenis Konsekuensi
+                        </button>
+                        <button onclick="switchKonsekuensiTab('petakan')" id="konsBtnTab_petakan" class="kons-tab-btn py-2.5 px-5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors flex items-center gap-2">
+                            <i class="fas fa-sitemap"></i> Petakan Siswa
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: JENIS KONSEKUENSI -->
+                    <div id="konsTab_jenis" class="kons-tab-content bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <div>
+                                <h3 class="font-bold text-gray-800"><i class="fas fa-list-ul text-indigo-600 mr-2"></i>
+                                    Daftar Konsekuensi</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Atur jenis-jenis konsekuensi dan sasarannya.</p>
+                            </div>
+                            <button onclick="openTambahKonsekuensiModal()" class="bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 flex items-center gap-2">
+                                <i class="fas fa-plus"></i> Tambah Baru
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-gray-50 border-y border-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-16">
+                                            No</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            Nama Konsekuensi</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider w-40">
+                                            Sasaran</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right w-48">
+                                            Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyJenisKonsekuensi" class="divide-y divide-gray-100">
+                                    <!-- Dinamis dari JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: PETAKAN SISWA -->
+                    <div id="konsTab_petakan" class="kons-tab-content hidden space-y-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Kiri: Daftar Siswa Terlambat -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-100 pb-3 mb-4">
+                                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                        <i class="fas fa-user-clock text-red-500"></i> Siswa Terlambat
+                                    </h3>
+                                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                                        <button onclick="loadSiswaTerlambatKons()" class="px-2.5 py-1.5 text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-lg transition" title="Refresh Data"><i class="fas fa-redo"></i></button>
+                                        <input type="date" id="konsFilterDate" onchange="loadSiswaTerlambatKons()" class="px-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 flex-1 sm:flex-none">
+                                        <button onclick="pilihTanggalHariIniKons()" class="px-3 py-1.5 text-sm font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition whitespace-nowrap"><i class="fas fa-sync-alt mr-1"></i> Hari Ini</button>
+                                    </div>
+                                </div>
+                                <div id="daftarSiswaTerlambatKons">
+                                    <!-- Dinamis dari JS -->
+                                </div>
+                            </div>
+
+                            <!-- Kanan: Pilih Konsekuensi -->
+                            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col h-full">
+                                <h3 class="font-bold text-gray-800 flex items-center gap-2 border-b border-gray-100 pb-3 mb-4">
+                                    <i class="fas fa-check-square text-indigo-500"></i> Pilih Konsekuensi Aktif
+                                </h3>
+                                <div id="checklistKonsekuensiKons" class="flex-1">
+                                    <!-- Dinamis dari JS -->
+                                </div>
+                                <div class="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                                    <button onclick="generateKonsekuensi()" class="flex-1 min-w-0 bg-indigo-600 text-white hover:bg-indigo-700 py-3 px-2 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95 flex justify-center items-center gap-2">
+                                        <i class="fas fa-magic"></i> Generate Pembagian Siswa
+                                    </button>
+                                    <button onclick="resetSusunanKonsekuensi()" class="flex-1 min-w-0 bg-gray-100 text-gray-700 hover:bg-gray-200 py-3 px-2 rounded-xl font-bold border border-gray-200 transition-all active:scale-95 flex justify-center items-center gap-2" title="Reset susunan pembagian siswa">
+                                        <i class="fas fa-undo"></i> Reset
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bawah: Hasil Generate -->
+                        <div id="hasilGenerateKonsekuensi">
+                            <!-- Dinamis dari JS -->
+                        </div>
+                    </div>
+                </div>

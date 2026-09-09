@@ -1,0 +1,26 @@
+<div id="view-scanner" class="view-section animate-fade-in">
+                    <div class="max-w-xs mx-auto">
+                        <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                            <div class="p-4 bg-gray-900 text-white text-center">
+                                <h3 class="font-bold text-lg tracking-wide">Scanner</h3>
+                            </div>
+                            <div class="p-4">
+                                <div class="relative w-full aspect-square bg-black rounded-xl overflow-hidden mb-4 shadow-inner">
+                                    <div id="reader" class="w-full h-full object-cover"></div>
+                                    <div id="camLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-20">
+                                        <i class="fas fa-circle-notch fa-spin text-2xl mb-2 text-indigo-500"></i>
+                                        <p class="text-xs font-medium text-white">Memuat...</p>
+                                    </div>
+                                </div>
+                                <div id="scanResult" class="hidden mb-4 text-center text-xs font-bold animate-fade-in">
+                                </div>
+                                <div class="flex gap-2 mb-2">
+                                    <button onclick="startCamera('environment')" class="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg font-bold text-xs hover:bg-blue-100">Belakang</button>
+                                    <button onclick="startCamera('user')" class="flex-1 bg-purple-50 text-purple-700 py-2 rounded-lg font-bold text-xs hover:bg-purple-100">Depan</button>
+                                </div>
+                                <button onclick="stopAndBack(true)" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg font-bold text-xs hover:bg-gray-200">Kembali</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>

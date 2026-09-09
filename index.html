@@ -1,0 +1,485 @@
+<meta charset="UTF-8">
+<meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+<!-- Cache Control: Cegah browser menyajikan halaman versi lama -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>SiPresDir Hybrid</title>
+<link rel="icon" type="image/png" href="assets/img/imgsipresdir.png">
+<link rel="manifest" href="manifest.json">
+
+<!-- iOS Support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SiPresDiR+">
+<link rel="apple-touch-icon" href="assets/img/imgsipresdir.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] },
+                colors: { primary: '#738862', secondary: '#10B981', dark: '#111827', }
+            }
+        }
+    }
+</script>
+
+<link rel="stylesheet" href="assets/css/style.css?v=15">
+
+
+
+
+<div id="loginPage">
+</div>
+
+<div id="dashboardContainer" class="hidden flex h-screen overflow-hidden bg-[#F3F4F6]">
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 w-64 text-white transform -translate-x-full md:translate-x-0 transition-all duration-300 ease-in-out flex flex-col h-full shadow-2xl border-r border-indigo-900/30 overflow-hidden animated-gradient">
+        <div id="sidebarHeader"
+            class="h-16 flex items-center justify-start px-6 border-b border-indigo-900/50 overflow-hidden relative transition-all duration-300">
+            <div class="flex items-center space-x-3 relative z-10 w-full">
+                <div
+                    class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-900/50 shrink-0 transition-all duration-300">
+                    <i class="fas fa-qrcode text-sm"></i>
+                </div>
+                <div class="sidebar-label transition-opacity duration-300 whitespace-nowrap">
+                    <h1 class="font-bold text-base tracking-wide text-white">SiPresDiR+</h1>
+                    <p class="text-[9px] text-indigo-200 uppercase tracking-wider font-semibold">Sistem Presensi
+                        Digital Realtime <br> + Catatan Pelanggaran Siswa</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 overflow-hidden transition-all duration-300">
+            <div id="userProfileCard"
+                class="flex items-center space-x-3 p-3 bg-black/20 rounded-xl border border-white/10 transition-all duration-300 overflow-hidden">
+                <div id="navUserInitial"
+                    class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-sm shadow-inner shrink-0 text-white">
+                    U</div>
+                <div id="userInfo" class="sidebar-label transition-opacity duration-300 whitespace-nowrap">
+                    <p id="navUserName" class="font-semibold text-xs truncate text-white max-w-[120px]">User</p>
+                    <span id="navUserRole"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-indigo-800 text-indigo-100 border border-indigo-700 tracking-wider">Role</span>
+                </div>
+            </div>
+        </div>
+
+        <nav id="sidebarMenu"
+            class="flex-1 overflow-y-auto overflow-x-hidden px-3 space-y-1 pb-4 scrollbar-hide text-sm"></nav>
+
+        <div class="p-4 border-t border-indigo-900/50 bg-black/10">
+            <button onclick="logout()" id="btnLogout"
+                class="flex items-center space-x-3 text-red-300 hover:text-white hover:bg-red-500/20 w-full p-2.5 rounded-lg transition duration-200 group overflow-hidden whitespace-nowrap justify-start">
+                <i
+                    class="fas fa-sign-out-alt w-5 text-center shrink-0 group-hover:scale-110 transition-transform text-sm"></i>
+                <span class="sidebar-label font-medium transition-opacity duration-300 text-xs">Keluar
+                    Aplikasi</span>
+            </button>
+        </div>
+    </aside>
+
+    <div id="mobileOverlay" onclick="toggleSidebar()"
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-30 hidden transition-opacity duration-300 opacity-0 pointer-events-none">
+    </div>
+
+    <main id="mainContent"
+        class="flex-1 flex flex-col md:ml-64 h-screen relative transition-all duration-300 overflow-x-hidden bg-[#F3F4F6]">
+
+        <header
+            class="h-16 bg-white/80 backdrop-blur-xl sticky top-0 z-20 hidden md:flex items-center justify-between px-6 border-b border-slate-200/70 shadow-sm supports-[backdrop-filter]:bg-white/60">
+            <div class="flex items-center">
+                <button onclick="toggleSidebar()"
+                    class="mr-3 p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-lg transition-colors focus:outline-none">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h2 id="pageTitle" class="text-lg font-bold text-slate-800 tracking-tight">Dashboard</h2>
+                </div>
+            </div>
+            <div class="absolute left-1/2 -translate-x-1/2 hidden md:block text-center px-3">
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Hari ini</p>
+                    <p class="text-xs font-bold text-slate-700" id="currentDateDisplay">...</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="headerSyncButton" onclick="openSyncModal()" class="hidden items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold shadow-sm hover:bg-indigo-700 transition">
+                    <i class="fas fa-sync-alt"></i><span>Sinkronisasi</span>
+                </button>
+                <span id="connectionBadge" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span><span id="connectionBadgeText">Offline</span>
+                </span>
+            </div>
+        </header>
+
+        <header id="mobileHeader"
+            class="md:hidden fixed top-0 left-0 w-full z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100 px-4 py-3 flex justify-between items-center transition-all">
+            <div class="flex items-center gap-3 w-1/2 overflow-hidden">
+                <img src="" class="dyn-logo w-8 h-8 object-contain drop-shadow-sm transition-all duration-300 shrink-0">
+                <div class="leading-tight overflow-hidden">
+                    <h1
+                        class="dyn-namasekolah font-bold text-xs tracking-tight text-gray-800 m-0 break-words leading-tight line-clamp-2">
+                        Memuat...</h1>
+                    <p id="mobileHeaderRole" class="text-[9px] font-bold text-indigo-600 uppercase tracking-wider m-0">
+                        Role</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 shrink-0">
+                <button id="btnMobileLaporan" onclick="loadRekapAbsensi()"
+                    class="hidden flex-col items-center text-gray-500 hover:text-indigo-600 transition">
+                    <i class="fas fa-clipboard-list text-base"></i>
+                    <span class="text-[8px] font-medium mt-0.5">Laporan</span>
+                </button>
+                <button id="btnMobileSettings" onclick="loadPengaturan()"
+                    class="hidden flex-col items-center text-gray-500 hover:text-indigo-600 transition">
+                    <i class="fas fa-cog text-base"></i>
+                    <span class="text-[8px] font-medium mt-0.5">Setting</span>
+                </button>
+                <button id="btnMobileLogout" onclick="logout()"
+                    class="hidden flex-col items-center text-rose-500 hover:text-rose-700 transition transform active:scale-95 bg-rose-50 p-2 rounded-lg ml-1">
+                    <i class="fas fa-power-off text-lg"></i>
+                </button>
+            </div>
+        </header>
+
+
+
+        <nav id="mobileBottomNav"
+            class="md:hidden fixed bottom-0 left-0 w-full z-40 bg-white border-t border-gray-200 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.1)] px-2 pb-1 pt-2 flex justify-around items-end">
+        </nav>
+
+        <div id="mainContentArea"
+            class="flex-1 overflow-y-auto overflow-x-hidden p-4 pt-20 pb-28 md:pt-4 md:pb-6 md:p-6 scroll-smooth">
+
+            <div id="view-admin-dashboard" class="view-section animate-fade-in"></div>
+            <div id="view-input-kasus" class="view-section animate-fade-in"></div>
+            <div id="view-rekap-kasus" class="view-section animate-fade-in"></div>
+            <div id="view-master-pelanggaran" class="view-section animate-fade-in"></div>
+
+            <!-- VIEW KONSEKUENSI HARIAN -->
+            <div id="view-konsekuensi" class="view-section hidden animate-fade-in"></div>
+
+            <div id="view-pengaturan" class="view-section animate-fade-in hidden"></div>
+            <div id="view-guru-dashboard" class="view-section animate-fade-in"></div>
+            <div id="view-siswa-dashboard" class="view-section animate-fade-in"></div>
+            <div id="view-data-siswa" class="view-section animate-fade-in"></div>
+            <div id="view-data-siswa-nonaktif" class="view-section hidden animate-fade-in"></div>
+            <div id="view-data-guru" class="view-section animate-fade-in"></div>
+            <div id="view-kelola-absen" class="view-section animate-fade-in"></div>
+            <div id="view-monitoring" class="view-section animate-fade-in"></div>
+            <div id="view-rekap-absensi" class="view-section animate-fade-in"></div>
+            <div id="view-scanner" class="view-section animate-fade-in"></div>
+            <div id="view-absen-wfh" class="view-section animate-fade-in"></div>
+
+            <div id="view-izin-siswa" class="view-section animate-fade-in"></div>
+
+
+            <div id="view-kartu-siswa" class="view-section animate-fade-in"></div>
+
+            <div id="view-rekap-siswa" class="view-section animate-fade-in"></div>
+
+            <footer class="mt-10 pt-6 border-t border-gray-200">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+
+                    <div class="text-center md:text-left">
+                        <p class="font-semibold text-gray-700">© <span class="dyn-tahun"></span> SiPresDiR - <span
+                                class="dyn-namasekolah"></span></p>
+                        <p class="mt-1">Sistem Presensi Digital Realtime | All Rights Reserved.</p>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <a href="https://wa.me/6285219901909" target="_blank"
+                            class="hover:text-indigo-600 transition">Bantuan</a>
+                        <span class="text-gray-300">|</span>
+                        <a href="#" onclick="showPrivacyModal(event)" class="hover:text-indigo-600 transition">Kebijakan
+                            Privasi</a>
+                        <span class="text-gray-300">|</span>
+
+                        <span class="opacity-75">Powered by :
+                            <a href="https://www.farypin-inovasiteknologi.com" target="_blank"
+                                class="text-indigo-600 font-bold hover:underline">PT Farypin Inovasi Teknologi</a>
+                        </span>
+                    </div>
+                </div>
+                <div class="h-6"></div>
+            </footer>
+
+        </div>
+        <button id="btnScrollTop" onclick="scrollToTop()"
+            class="hidden fixed bottom-20 left-4 z-40 md:bottom-8 md:left-8 bg-white/90 backdrop-blur text-gray-600 w-11 h-11 rounded-full shadow-lg flex items-center justify-center border border-gray-200 transition-all hover:bg-gray-50 focus:outline-none"><i
+                class="fas fa-chevron-up"></i></button>
+
+        <button id="fabInputKasus" onclick="loadInputKasus()"
+            class="hidden fixed bottom-20 right-4 z-50 md:bottom-8 md:right-8 bg-gradient-to-tr from-rose-600 to-red-600 text-white w-14 h-14 rounded-full shadow-2xl shadow-rose-500/50 flex items-center justify-center text-2xl transform transition hover:scale-110 active:scale-95 border-2 border-white focus:outline-none">
+            <i class="fas fa-exclamation-triangle animate-pulse"></i>
+        </button>
+
+    </main>
+</div>
+
+<div id="cropModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity" onclick="closeCropModal()">
+    </div>
+    <div class="relative bg-white rounded-3xl shadow-2xl p-6 max-w-md w-full animate-slide-up">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-lg text-gray-800"><i class="fas fa-crop-alt text-indigo-600 mr-2"></i>
+                Sesuaikan Logo</h3>
+            <button onclick="closeCropModal()" class="text-gray-400 hover:text-rose-500 transition"><i
+                    class="fas fa-times text-lg"></i></button>
+        </div>
+        <div
+            class="w-full h-64 bg-gray-100 flex items-center justify-center overflow-hidden rounded-xl mb-6 shadow-inner border border-gray-200">
+            <img id="imageToCrop" src="" style="max-width: 100%; max-height: 100%; display: block;">
+        </div>
+        <div class="flex gap-3">
+            <button onclick="closeCropModal()"
+                class="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Batal</button>
+            <button onclick="applyCrop()"
+                class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition transform active:scale-95">Terapkan
+                PNG</button>
+        </div>
+    </div>
+</div>
+
+<div id="loadingOverlay"
+    class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[9999] hidden flex items-center justify-center flex-col transition-opacity">
+    <div class="p-6 bg-white rounded-3xl shadow-2xl flex flex-col items-center min-w-[160px] transform scale-110">
+        <div
+            class="w-14 h-14 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4 relative flex items-center justify-center">
+            <div class="absolute inset-0 flex items-center justify-center animate-[spin_1s_linear_infinite_reverse]">
+                <span id="loadingCountdown" class="text-xs font-extrabold text-indigo-600">8</span>
+            </div>
+        </div>
+        <p id="loadingText" class="text-slate-800 text-sm font-bold tracking-wide text-center leading-tight">
+            Memproses... <br><span class="text-[10px] text-gray-500 font-normal">Mohon tunggu</span></p>
+    </div>
+</div>
+
+<div id="modalContainer"></div>
+
+<div id="privacyModal" class="fixed inset-0 z-[60] hidden" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
+    <div class="fixed inset-0 bg-gray-900/75 transition-opacity backdrop-blur-sm" onclick="closePrivacyModal()">
+    </div>
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl animate-fade-in border border-gray-100">
+
+                <div class="bg-indigo-600 px-4 py-4 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-base font-bold leading-6 text-white flex items-center gap-2" id="modal-title">
+                        <i class="fas fa-shield-alt"></i> Kebijakan Privasi
+                    </h3>
+                    <button type="button" onclick="closePrivacyModal()"
+                        class="text-indigo-200 hover:text-white transition">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="px-6 py-6 max-h-[60vh] overflow-y-auto text-sm text-gray-600 leading-relaxed space-y-4">
+                    <p class="font-bold text-gray-800">Terakhir diperbarui: <span id="privacy-update-date"></span>
+                    </p>
+
+                    <p>Selamat datang di <strong>SiPresDiR (Sistem Presensi Digital Realtime)</strong>. Kami
+                        menghargai privasi Anda dan berkomitmen untuk melindungi data pribadi seluruh warga sekolah
+                        (Siswa, Guru, dan Staf).</p>
+
+                    <h4 class="font-bold text-indigo-700 mt-4">1. Informasi yang Kami Kumpulkan</h4>
+                    <p>Aplikasi ini mengumpulkan data yang diperlukan semata-mata untuk keperluan administrasi
+                        sekolah, meliputi:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><strong>Identitas Siswa:</strong> Nama Lengkap, NISN, Kelas, dan Jenis Kelamin.</li>
+                        <li><strong>Data Kehadiran:</strong> Waktu (timestamp) saat melakukan scan/perekaman
+                            presensi datang dan pulang.</li>
+                        <li><strong>Foto (Opsional):</strong> Pada fitur tertentu, foto mungkin diambil saat proses
+                            presensi untuk validasi.</li>
+                    </ul>
+
+                    <h4 class="font-bold text-indigo-700 mt-4">2. Penggunaan Data</h4>
+                    <p>Data yang dikumpulkan digunakan untuk:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Mencatat kehadiran harian secara otomatis dan real-time.</li>
+                        <li>Membuat laporan rekapitulasi kehadiran (Hadir, Sakit, Izin, Alpa) untuk Guru dan Wali
+                            Kelas.</li>
+                        <li>Memantau kedisiplinan siswa di lingkungan sekolah.</li>
+                    </ul>
+
+                    <h4 class="font-bold text-indigo-700 mt-4">3. Penyimpanan Data</h4>
+                    <p>Seluruh data disimpan secara aman menggunakan infrastruktur <strong>Google Cloud (Google
+                            Sheets &amp; Google Drive)</strong> milik sekolah. Akses terhadap database dibatasi hanya
+                        untuk Administrator dan Guru yang berwenang.</p>
+
+                    <h4 class="font-bold text-indigo-700 mt-4">4. Keamanan</h4>
+                    <p>Kami menerapkan langkah-langkah keamanan standar untuk melindungi data dari akses yang tidak
+                        sah. Namun, harap diingat bahwa tidak ada metode transmisi data melalui internet yang 100%
+                        aman.</p>
+
+                    <h4 class="font-bold text-indigo-700 mt-4">5. Kontak</h4>
+                    <p>Jika Anda memiliki pertanyaan mengenai kebijakan privasi ini atau ingin mengajukan perbaikan
+                        data, silakan hubungi Administrator IT Sekolah atau pengembang aplikasi melalui WhatsApp
+                        yang tertera di footer aplikasi.</p>
+                </div>
+
+                <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-gray-100">
+                    <button type="button" onclick="closePrivacyModal()"
+                        class="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto transition-all transform active:scale-95">
+                        Saya Mengerti
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Script Utama Aplikasi -->
+
+
+
+
+
+    <!-- Modal Sinkronisasi Offline -->
+    <div id="syncModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-sync text-indigo-600 mr-2"></i> Sinkronisasi Offline</h3>
+                <button onclick="closeSyncModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-4">Gunakan pemeriksaan ini untuk memastikan link server online dapat dihubungi dari aplikasi desktop.</p>
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Link Exec Web App (URL Sinkronisasi)</label>
+                    <input type="text" id="syncLinkInput" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm" placeholder="https://script.google.com/macros/s/.../exec">
+                    <p class="text-[10px] text-gray-500 mt-1">Anda bisa mengubah link ini, perubahan akan disimpan sementara untuk sesi ini atau ke config lokal Anda.</p>
+                </div>
+                
+                <div id="syncStatus" class="hidden rounded-lg p-3 text-sm mt-4 font-medium"></div>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+                <button onclick="closeSyncModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold rounded-lg transition">Batal</button>
+                <button onclick="executeSync()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg transition shadow-md flex items-center gap-2">
+                    <i class="fas fa-plug"></i> Uji Koneksi Server
+                </button>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal Konsekuensi Harian -->
+<div id="modalKonsekuensi"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+    <div
+        class="bg-white rounded-2xl shadow-xl w-full max-w-md transform scale-95 transition-transform duration-300 overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <h3 id="modalKonsekuensiTitle" class="font-bold text-gray-800 text-lg flex items-center gap-2">
+                <i class="fas fa-gavel text-indigo-600"></i> Tambah Konsekuensi
+            </h3>
+            <button type="button" onclick="closeModalKonsekuensi()"
+                class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="p-5 overflow-y-auto">
+            <form id="formKonsekuensi" onsubmit="event.preventDefault(); simpanKonsekuensi();" class="space-y-4">
+                <input type="hidden" id="kons_id" value="">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Nama
+                        Konsekuensi</label>
+                    <input type="text" id="kons_nama" required=""
+                        class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm text-gray-700"
+                        placeholder="Contoh: Membersihkan Toilet">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wide">Objek /
+                        Sasaran</label>
+                    <select id="kons_objek" required=""
+                        class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm text-gray-700 appearance-none">
+                        <option value="L/P">Laki-Laki dan Perempuan</option>
+                        <option value="L">Laki-Laki Saja</option>
+                        <option value="P">Perempuan Saja</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="p-5 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+            <button type="button" onclick="closeModalKonsekuensi()"
+                class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-800 bg-white border border-gray-300 hover:bg-gray-50 rounded-xl transition">Batal</button>
+            <button type="button" id="btnSubmitKonsekuensi" onclick="simpanKonsekuensi()"
+                class="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 rounded-xl transition flex items-center justify-center gap-2 active:scale-95">
+                <i class="fas fa-save"></i> Simpan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- PWA Install Popup -->
+<div id="pwaInstallPopup"
+    class="fixed top-0 left-0 w-full bg-white border-b border-gray-200 shadow-xl p-4 transform -translate-y-full transition-transform duration-300 z-[9999] flex items-center justify-between">
+    <div class="flex items-center gap-3">
+        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhfzGqA11LudTtI5aqUk93_GUJWPoHCR2uNbhgSgZhv71Bmx48aW6zBg7l7U6KoVNNmQpC7zai4T3KeV6DfH1VXfpwQDaxYPEiaCZ8opxte2Koje_yoSzejOD3eKTGt8tHeMuVVrldPZjsXCeRjUe1dbFibHnjpxZYcYlsGBz3YKr_ZU9E9n4z1y0dUrYXC/s425/logo%20sipresdir.png"
+            alt="Logo" class="w-10 h-10 object-contain">
+        <div>
+            <h4 class="text-sm font-bold text-gray-800">SiPresDir Hybrid</h4>
+            <p class="text-xs text-gray-500">Instal aplikasi untuk akses lebih cepat!</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <button id="pwaCloseBtn" class="p-2 text-gray-400 hover:text-gray-600 transition">
+            <i class="fas fa-times text-lg"></i>
+        </button>
+        <button id="pwaInstallBtn"
+            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-indigo-700 transition active:scale-95">
+            Instal
+        </button>
+    </div>
+</div>
+
+<!-- Application Logic -->
+<script src="assets/js/router.js"></script>
+
+<!-- Core Modules -->
+<script src="assets/js/modules/core/api.js"></script>
+<script src="assets/js/modules/core/ui.js"></script>
+<script src="assets/js/modules/core/dashboard.js"></script>
+<script src="assets/js/modules/core/users.js"></script>
+<script src="assets/js/modules/core/settings.js"></script>
+<script src="assets/js/modules/core/pwa.js"></script>
+
+<!-- Absensi Modules -->
+<script src="assets/js/modules/absensi/scanner.js"></script>
+<script src="assets/js/modules/absensi/kartu.js"></script>
+<script src="assets/js/modules/absensi/wfh.js"></script>
+<script src="assets/js/modules/absensi/surat-izin.js"></script>
+<script src="assets/js/modules/absensi/rekap-siswa.js"></script>
+<script src="assets/js/modules/absensi/rekap-guru.js"></script>
+<script src="assets/js/modules/absensi/monitoring.js"></script>
+<script src="assets/js/modules/absensi/libur.js"></script>
+
+<!-- Disiplin Modules -->
+<script src="assets/js/modules/disiplin/input-kasus.js"></script>
+<script src="assets/js/modules/disiplin/rekap-disiplin.js"></script>
+<script src="assets/js/modules/disiplin/konsekuensi.js"></script>
+<script src="assets/js/modules/disiplin/master-pelanggaran.js"></script>
+</body>
+</html>
