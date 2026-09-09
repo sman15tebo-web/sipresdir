@@ -1012,6 +1012,7 @@ async function handleLogin(event) {
         hideLoading();
 
         if (result.success) {
+            alert("SUKSES: " + JSON.stringify(result));
             currentUser = result;
             setSession(result);
             if (!(await requirePasswordChange(result))) return;
@@ -1020,6 +1021,7 @@ async function handleLogin(event) {
             await preloadRoleViews(result.role);
             initDashboard();
         } else {
+            alert("GAGAL: " + JSON.stringify(result));
             const errorDiv = document.getElementById('loginError');
             if (errorDiv) {
                 document.getElementById('errorText').textContent = result.message;
