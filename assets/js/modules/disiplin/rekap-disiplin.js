@@ -71,12 +71,14 @@ async function loadRekapKasus(isRetry = false) {
 
         if (res.success) {
             const isAdminGuru = (currentUser.role === 'admin' || currentUser.role === 'guru');
-            window.kasusHistoryData = res.history || [];
+            const history = Array.isArray(res.history) ? res.history : [];
+            const leaderboard = Array.isArray(res.leaderboard) ? res.leaderboard : [];
+            window.kasusHistoryData = history;
 
             if (isAdminGuru) {
-                window.kasusLeaderboardData = res.leaderboard;
+                window.kasusLeaderboardData = leaderboard;
 
-                const kelasSet = new Set(res.leaderboard.map(d => d.kelas));
+                const kelasSet = new Set(leaderboard.map(d => d.kelas).filter(Boolean));
                 let kelasHtml = '<option value="">Semua Kelas</option>';
                 Array.from(kelasSet).sort().forEach(k => { kelasHtml += `<option value="${k}">${k}</option>`; });
                 document.getElementById('filterKelasKasus').innerHTML = kelasHtml;
@@ -84,7 +86,7 @@ async function loadRekapKasus(isRetry = false) {
                 document.getElementById('areaAdminUtama').classList.remove('hidden');
                 document.getElementById('areaAdminUtama').classList.add('flex');
 
-                window.kasusLeaderboardFiltered = res.leaderboard;
+                window.kasusLeaderboardFiltered = leaderboard;
                 window.kasusLeaderboardPage = 1;
                 renderLeaderboardPaginated();
             } else {
@@ -94,7 +96,7 @@ async function loadRekapKasus(isRetry = false) {
                 document.getElementById('headerDetailKasus').classList.add('hidden');
 
                 let myPoints = 0;
-                if (res.leaderboard.length > 0) myPoints = res.leaderboard[0].totalPoin;
+                if (leaderboard.length > 0) myPoints = leaderboard[0].totalPoin;
 
                 document.getElementById('valTotalPoinSiswa').textContent = myPoints;
                 const statEl = document.getElementById('valStatusPoinSiswa');
@@ -110,7 +112,7 @@ async function loadRekapKasus(isRetry = false) {
                     statEl.className = 'text-[10px] md:text-xs font-bold px-4 py-1.5 rounded-full inline-block border shadow-sm bg-red-50 border-red-200 text-red-700 animate-pulse';
                 }
 
-                renderHistoryKasus(res.history);
+                renderHistoryKasus(history);
             }
         } else {
             if (res.message.includes('antrean') || res.message.includes('sibuk')) {
