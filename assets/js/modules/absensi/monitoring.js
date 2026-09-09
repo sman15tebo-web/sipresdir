@@ -7,6 +7,7 @@ function getTanggalHariIniMonitoring() {
 }
 
 async function loadMonitoringAbsensi(forceDate = false) {
+    window.monitoringHolidayMessage = '';
     stopAndBack(false);
     tableState.monitoring.page = 1;
     if (currentUser && currentUser.role === 'admin') setActiveMenu('Kelola Presensi');
@@ -83,18 +84,11 @@ async function loadMonitoringAbsensi(forceDate = false) {
         let useData = [];
 
         if (result && result.success) {
-            if (result.isLibur) {
-                tableState.monitoring.fullData = [];
-                processTableData('monitoring');
-                const tbodyHoliday = document.getElementById('tbody-monitoring');
-                if (tbodyHoliday) tbodyHoliday.innerHTML = `<tr><td colspan="8" class="p-12 text-center font-bold text-rose-500 bg-white"><i class="fas fa-calendar-times mb-2 text-2xl"></i><br>${result.message}</td></tr>`;
-                return;
-            }
-
+            window.monitoringHolidayMessage = result.isLibur ? (result.message || 'Hari ini hari libur.') : '';
             useData = Array.isArray(result.data) ? result.data : [];
         }
 
-        if ((!result || !result.success || useData.length === 0) && targetDate) {
+        if ((!result || !result.success) && targetDate) {
             try {
                 const fallback = await fetchAPI('getAbsensiList', { tanggalMulai: targetDate, tanggalAkhir: targetDate, kelas: selectedClass || '' });
                 if (fallback && fallback.success && Array.isArray(fallback.data)) {
@@ -117,10 +111,6 @@ async function loadMonitoringAbsensi(forceDate = false) {
         tableState.monitoring.fullData = useData;
         processTableData('monitoring');
 
-        if (useData.length === 0) {
-            const tbodyEmpty = document.getElementById('tbody-monitoring');
-            if (tbodyEmpty) tbodyEmpty.innerHTML = '<tr><td colspan="8" class="p-12 text-center text-gray-400 italic bg-white">Data tidak ditemukan.</td></tr>';
-        }
     } catch (e) {
         tableState.monitoring.fullData = [];
         const tbodyError = document.getElementById('tbody-monitoring');
@@ -132,7 +122,10 @@ function renderMonitoringRows(data, startIdx) {
     const tbody = document.getElementById('tbody-monitoring');
     if (!tbody) return;
     if (!Array.isArray(data) || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-12 text-center text-gray-400 italic bg-white">Tidak ada data ditemukan.</td></tr>';
+        const holidayNotice = window.monitoringHolidayMessage
+            ? `<tr><td colspan="8" class="p-3 text-center text-amber-700 font-bold bg-amber-50 border-b border-amber-100"><i class="fas fa-calendar-times mr-2"></i>${window.monitoringHolidayMessage}</td></tr>`
+            : '';
+        tbody.innerHTML = `${holidayNotice}<tr><td colspan="8" class="p-12 text-center text-gray-400 italic bg-white">Tidak ada data ditemukan.</td></tr>`;
         return;
     }
 
@@ -250,6 +243,10 @@ function renderMonitoringRows(data, startIdx) {
             <td class="p-2 align-middle text-center">${buktiHtml}</td>
         </tr>`;
     }).join('');
+
+    if (window.monitoringHolidayMessage) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-3 text-center text-amber-700 font-bold bg-amber-50 border-b border-amber-100"><i class="fas fa-calendar-times mr-2"></i>${window.monitoringHolidayMessage}</td></tr>${tbody.innerHTML}`;
+    }
 }
 
 async function changeStatus(nisn, nama, kelas, tanggal, selectElement) {
