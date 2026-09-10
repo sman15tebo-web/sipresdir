@@ -943,7 +943,7 @@ async function requirePasswordChange(user) {
     }
     if (!response?.success) {
         await Swal.fire('Gagal', response?.message || 'Password gagal diubah.', 'error');
-        return requirePasswordChange(user);
+        return false;
     }
     user.mustChangePassword = false;
     setSession(user);
