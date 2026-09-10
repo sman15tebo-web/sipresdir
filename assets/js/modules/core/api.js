@@ -261,7 +261,7 @@ function applyAppConfigToUI(result) {
     document.querySelectorAll('.dyn-website').forEach(el => el.textContent = safeConfig.website);
     document.querySelectorAll('.dyn-website-link').forEach(el => el.href = (safeConfig.website.startsWith('http') ? safeConfig.website : '#'));
     document.querySelectorAll('.dyn-runningtext').forEach(el => el.textContent = safeConfig.runningtext);
-    document.querySelectorAll('.dyn-tahun').forEach(el => el.textContent = safeConfig.tahun);
+    document.querySelectorAll('.dyn-tahun').forEach(el => el.textContent = new Date().getFullYear());
 
     // Logika Tampilan Template Surat
     const actContainer = document.getElementById('actionTemplateSuratContainer');
