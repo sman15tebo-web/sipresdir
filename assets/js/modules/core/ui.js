@@ -170,69 +170,86 @@ async function executeSync() {
         return;
     }
 
-    let lastError = null;
-    const maxAttempts = 3;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-            const queueStatus = await window.electronAPI.queryDB('getSyncQueueStatus', { token: currentUser?.token });
-            if (queueStatus.success && (queueStatus.data?.pending || queueStatus.data?.failed)) {
-                statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-amber-100 text-amber-800 border border-amber-200';
-                statusDiv.innerHTML = `<i class="fas fa-sync fa-spin mr-2"></i> Percobaan ${attempt}/${maxAttempts}: Antrian sinkronisasi ada data tertunda, akan diproses ulang...`;
-            }
-
-            statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-blue-100 text-blue-800 border border-blue-200';
-            statusDiv.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> ${attempt}/${maxAttempts} Mempersiapkan data lokal...`;
-            const prepRes = await window.electronAPI.queryDB('prepareSyncData', { token: currentUser?.token });
-            if (!prepRes.success) throw new Error('Gagal menyiapkan data lokal: ' + prepRes.message);
-
-            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengautentikasi dengan server online...';
-            const config = await window.electronAPI.getOfflineConfig();
-            const loginRes = await fetch(newLink, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'login', username: config.admin.username, password: config.admin.password }),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            });
-            const loginData = await loginRes.json();
-            if (!loginRes.ok || !loginData.success) {
-                throw new Error('Gagal login ke server online: ' + (loginData.message || 'Kredensial tidak valid.'));
-            }
-            const onlineToken = loginData.token;
-
-            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengunggah & Mengunduh data ke server...';
-            const response = await fetch(newLink, {
-                method: 'POST',
-                body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: prepRes.data }),
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-            });
-            const result = await response.json();
-            if (!response.ok || !result.success) throw new Error(result.message || 'Server tidak merespons dengan benar.');
-
-            statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses pembaruan dari server...';
-            const procRes = await window.electronAPI.queryDB('processSyncResponse', { token: currentUser?.token, masterData: result.masterData, syncedIds: result.syncedIds });
-            if (!procRes.success) throw new Error('Gagal memproses respons server: ' + procRes.message);
-
-            statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-green-100 text-green-800 border border-green-200';
-            const counts = result.counts || {};
-            statusDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Sinkronisasi berhasil. Siswa: ${counts.siswa ?? '-'}, Absensi: ${counts.absensi ?? '-'}, Konsekuensi: ${counts.jenisKonsekuensi ?? '-'} / riwayat ${counts.riwayatKonsekuensi ?? '-'}. Memuat ulang aplikasi...`;
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-            return;
-        } catch (error) {
-            lastError = error;
-            if (attempt < maxAttempts) {
-                statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-amber-100 text-amber-800 border border-amber-200';
-                statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> Gagal pada percobaan ${attempt}. Mencoba ulang (${attempt + 1}/${maxAttempts})...`;
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                continue;
-            }
+    statusDiv.className = 'rounded-lg p-4 text-sm mt-4 bg-gray-50 border border-gray-200 shadow-inner flex flex-col gap-2';
+    
+    const updateProgress = (stepId, status, text) => {
+        let el = document.getElementById(stepId);
+        if (!el) {
+            el = document.createElement('div');
+            el.id = stepId;
+            el.className = 'flex items-center text-gray-700 font-medium';
+            statusDiv.appendChild(el);
         }
-    }
+        
+        let icon = '<i class="fas fa-circle text-gray-300 mr-2 text-xs"></i>';
+        if (status === 'loading') icon = '<i class="fas fa-spinner fa-spin text-indigo-600 mr-2"></i>';
+        else if (status === 'success') icon = '<i class="fas fa-check-circle text-green-500 mr-2"></i>';
+        else if (status === 'error') icon = '<i class="fas fa-exclamation-circle text-red-500 mr-2"></i>';
+        else if (status === 'warning') icon = '<i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i>';
+        
+        el.innerHTML = `${icon} <span>${text}</span>`;
+    };
 
-    statusDiv.className = 'rounded-lg p-3 text-sm mt-4 font-medium bg-red-100 text-red-800 border border-red-200';
-    statusDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Sinkronisasi gagal setelah ${maxAttempts} percobaan: ${lastError?.message || 'Koneksi atau server tidak stabil.'}`;
+    statusDiv.innerHTML = '';
+
+    try {
+        updateProgress('step-check', 'loading', 'Memeriksa antrian sinkronisasi...');
+        const queueStatus = await window.electronAPI.queryDB('getSyncQueueStatus', { token: currentUser?.token });
+        if (queueStatus.success && (queueStatus.data?.pending || queueStatus.data?.failed)) {
+            updateProgress('step-check', 'warning', 'Terdapat antrian tertunda, diproses ulang.');
+        } else {
+            updateProgress('step-check', 'success', 'Antrian sinkronisasi bersih.');
+        }
+
+        updateProgress('step-prep', 'loading', 'Mempersiapkan data lokal...');
+        const prepRes = await window.electronAPI.queryDB('prepareSyncData', { token: currentUser?.token });
+        if (!prepRes.success) throw new Error('Gagal menyiapkan data lokal: ' + prepRes.message);
+        updateProgress('step-prep', 'success', 'Data lokal siap dikirim.');
+
+        updateProgress('step-auth', 'loading', 'Mengautentikasi dengan server online...');
+        const config = await window.electronAPI.getOfflineConfig();
+        const loginRes = await fetch(newLink, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'login', username: config.admin.username, password: config.admin.password }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const loginData = await loginRes.json();
+        if (!loginRes.ok || !loginData.success) {
+            throw new Error('Gagal login ke server online: ' + (loginData.message || 'Kredensial tidak valid.'));
+        }
+        const onlineToken = loginData.token;
+        updateProgress('step-auth', 'success', 'Autentikasi berhasil.');
+
+        updateProgress('step-transfer', 'loading', 'Mengunggah & mengunduh data ke server...');
+        const response = await fetch(newLink, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: prepRes.data }),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Server tidak merespons dengan benar.');
+        updateProgress('step-transfer', 'success', 'Transfer data selesai.');
+
+        updateProgress('step-process', 'loading', 'Memproses pembaruan dari server ke lokal...');
+        const procRes = await window.electronAPI.queryDB('processSyncResponse', { token: currentUser?.token, masterData: result.masterData, syncedIds: result.syncedIds });
+        if (!procRes.success) throw new Error('Gagal memproses respons server: ' + procRes.message);
+        updateProgress('step-process', 'success', 'Pemrosesan data lokal selesai.');
+
+        const counts = result.counts || {};
+        const localCounts = procRes.localCounts || {};
+        
+        let summaryDiv = document.createElement('div');
+        summaryDiv.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-800 text-sm font-semibold';
+        summaryDiv.innerHTML = `✅ Sinkronisasi berhasil menyeluruh!<br/><span class="text-xs font-normal">Siswa: ${counts.siswa ?? localCounts.siswa ?? '-'} | Guru: ${counts.guru ?? localCounts.guru ?? '-'} | Absensi: ${counts.absensi ?? localCounts.absensi ?? '-'} | Konsekuensi: ${counts.jenisKonsekuensi ?? localCounts.jenisKonsekuensi ?? '-'} / riwayat ${counts.riwayatKonsekuensi ?? '-'}</span><br/><span class="text-xs text-green-600">Memuat ulang aplikasi...</span>`;
+        statusDiv.appendChild(summaryDiv);
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+
+    } catch (error) {
+        updateProgress('step-error', 'error', `Sinkronisasi dihentikan: ${error.message}`);
+    }
 }
 
 window.openSyncModal = openSyncModal;
