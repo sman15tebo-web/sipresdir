@@ -1,12 +1,12 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzbOaXmTKe3TobQ2ndQY07_YU2Q_nu5atOO5JRoGwBdJIdv1mD-O-5bWPELoy6Q5g/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxIHVgcXe0PWVx0qpmR0g6yXBmjhiw2ZoVNV5nJ9xuvqScIRal_ma_wCavNnd88FexW/exec';
 
 // Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
 const TENANT_CONFIG = {
     // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
-    "sipresdir": "https://script.google.com/macros/s/AKfycbzbOaXmTKe3TobQ2ndQY07_YU2Q_nu5atOO5JRoGwBdJIdv1mD-O-5bWPELoy6Q5g/exec",
+    "sipresdir": "https://script.google.com/macros/s/AKfycbxIHVgcXe0PWVx0qpmR0g6yXBmjhiw2ZoVNV5nJ9xuvqScIRal_ma_wCavNnd88FexW/exec",
     "sekolah2": DEFAULT_API_URL,
     "sekolah3": DEFAULT_API_URL,
     "default": DEFAULT_API_URL // HARUS ADA!
@@ -1019,7 +1019,8 @@ async function handleLogin(event) {
             result = await fetchAPI('login', {
                 username: isSiswa ? nisnVal : userVal,
                 password: passVal,
-                nisn: nisnVal
+                nisn: isSiswa ? nisnVal : '',
+                role: isSiswa ? 'siswa' : 'staff'
             });
         }
 
