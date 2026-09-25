@@ -170,7 +170,7 @@ async function exportToExcel() {
     const btn = document.getElementById('btnExportExcel');
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Proses...';
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mempersiapkan...';
 
     try {
         if (typeof ExcelJS === 'undefined') {
@@ -179,6 +179,47 @@ async function exportToExcel() {
             btn.innerHTML = originalText;
             return;
         }
+
+        let headers = ["No", "Tanggal", "NISN", "Nama Siswa", "Kelas", "Jam Datang", "Jam Pulang", "Keterangan", "Status"];
+        let dataRows = data.map((row, index) => [
+            index + 1,
+            new Date(row.tanggal).toLocaleDateString('id-ID'),
+            row.nisn,
+            row.nama,
+            row.kelas,
+            row.jamDatang,
+            row.jamPulang,
+            (row.keterangan || '').startsWith('Surat:') ? 'Melampirkan Bukti' : row.keterangan,
+            row.status
+        ]);
+
+        if (typeof showExcelPreviewModal === 'function') {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            showExcelPreviewModal('REKAPITULASI ABSENSI SISWA', '', headers, dataRows, async () => {
+                await doActualExportExcelAbsensi(data);
+            });
+        } else {
+            await doActualExportExcelAbsensi(data);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+
+    } catch (error) {
+        showAlert('error', 'Gagal membuat pratinjau Excel.');
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function doActualExportExcelAbsensi(data) {
+    try {
+        Swal.fire({
+            title: 'Mengunduh File...',
+            html: 'Mohon tunggu sebentar',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(`Rekap Absensi`);
@@ -234,12 +275,9 @@ async function exportToExcel() {
 
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `Rekap_Absensi_${new Date().toISOString().slice(0, 10)}.xlsx`);
-        showAlert('success', 'File berhasil diunduh!');
+        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'File berhasil diunduh.', timer: 2000, showConfirmButton: false });
     } catch (error) {
-        showAlert('error', 'Gagal membuat file Excel.');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        Swal.fire('Error', 'Gagal membuat file Excel.', 'error');
     }
 }
 
@@ -308,16 +346,74 @@ async function processMatrixExport(event) {
 
         if (typeof ExcelJS === 'undefined') {
             showAlert('error', 'Library ExcelJS belum termuat!');
+            btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
+            btn.disabled = false;
             return;
         }
+
+        const bulanNama = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        const namaBulan = bulanNama[parseInt(bulan)];
+        const safeDays = Number.isInteger(Number(days)) && Number(days) > 0 ? Number(days) : new Date(Number(tahun), Number(bulan), 0).getDate();
+
+        let topHeader = ["No", "NISN", "Nama Siswa", "Kelas", "TANGGAL"];
+        let bottomHeader = ["", "", "", "", "1"];
+        
+        for (let i = 2; i <= safeDays; i++) {
+            topHeader.push(""); 
+            bottomHeader.push(String(i));
+        }
+
+        topHeader.push("JUMLAH", "", "", ""); 
+        bottomHeader.push("H", "S", "I", "A");
+
+        let dataRows = [];
+        data.forEach((row, idx) => {
+            let rowData = [idx + 1, row.nisn, row.nama, row.kelas];
+            const attendance = Array.isArray(row.kehadiran) ? row.kehadiran : [];
+            const stats = row.stats || { H: 0, S: 0, I: 0, A: 0 };
+            attendance.forEach(s => rowData.push(s));
+            rowData.push(stats.H || 0, stats.S || 0, stats.I || 0, stats.A || 0);
+            dataRows.push(rowData);
+        });
+
+        if (typeof showExcelPreviewModal === 'function') {
+            btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
+            btn.disabled = false;
+            showExcelPreviewModal(
+                'REKAPITULASI JURNAL KEHADIRAN BULANAN SISWA', 
+                `PERIODE: ${namaBulan.toUpperCase()} ${tahun} | KELAS: ${kelas ? kelas.toUpperCase() : 'SEMUA KELAS'}`, 
+                [topHeader, bottomHeader], 
+                dataRows, 
+                async () => {
+                    await doActualExportMatrix(data, bulan, tahun, kelas, namaBulan, safeDays);
+                }
+            );
+        } else {
+            await doActualExportMatrix(data, bulan, tahun, kelas, namaBulan, safeDays);
+            btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
+            btn.disabled = false;
+        }
+
+    } catch (err) {
+        closeModal();
+        showAlert('error', err.message || err);
+        btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
+        btn.disabled = false;
+    }
+}
+
+async function doActualExportMatrix(data, bulan, tahun, kelas, namaBulan, safeDays) {
+    try {
+        Swal.fire({
+            title: 'Mengunduh File...',
+            html: 'Mohon tunggu sebentar',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(`Jurnal Bulanan`);
 
-        const bulanNama = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-        const namaBulan = bulanNama[parseInt(bulan)];
-
-        const safeDays = Number.isInteger(Number(days)) && Number(days) > 0 ? Number(days) : new Date(Number(tahun), Number(bulan), 0).getDate();
         const totalCols = 4 + safeDays + 4; // 4 awal + days + 4 (H,S,I,A)
         worksheet.mergeCells(1, 1, 1, totalCols);
         const titleCell1 = worksheet.getCell('A1');
@@ -336,11 +432,11 @@ async function processMatrixExport(event) {
 
         topHeader.push("TANGGAL");
         for (let i = 1; i <= safeDays; i++) {
-            if (i > 1) topHeader.push(""); // isi kosong untuk sel yang akan dimerge
+            if (i > 1) topHeader.push(""); 
             bottomHeader.push(String(i));
         }
 
-        topHeader.push("JUMLAH", "", "", ""); // H, S, I, A
+        topHeader.push("JUMLAH", "", "", ""); 
         bottomHeader.push("H", "S", "I", "A");
 
         const row4 = worksheet.getRow(4);
@@ -349,16 +445,12 @@ async function processMatrixExport(event) {
         const row5 = worksheet.getRow(5);
         row5.values = bottomHeader;
 
-        // Merge untuk Header Kolom No, NISN, Nama, Kelas (Baris 4 ke 5)
         worksheet.mergeCells(4, 1, 5, 1);
         worksheet.mergeCells(4, 2, 5, 2);
         worksheet.mergeCells(4, 3, 5, 3);
         worksheet.mergeCells(4, 4, 5, 4);
 
-        // Merge untuk TANGGAL
         worksheet.mergeCells(4, 5, 4, 4 + safeDays);
-
-        // Merge untuk JUMLAH
         worksheet.mergeCells(4, 5 + safeDays, 4, 8 + safeDays);
 
         let cols = [
@@ -403,16 +495,10 @@ async function processMatrixExport(event) {
 
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `Jurnal_Absensi_${kelas || 'Semua'}_${namaBulan}_${tahun}.xlsx`);
-
-        showAlert('success', 'Laporan Matriks Berhasil Diunduh!');
-
-        btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
-        btn.disabled = false;
-    } catch (err) {
-        closeModal();
-        showAlert('error', err.message || err);
-        btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
-        btn.disabled = false;
+        
+        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Laporan Matriks Berhasil Diunduh!', timer: 2000, showConfirmButton: false });
+    } catch(err) {
+        Swal.fire('Error', 'Gagal membuat file Excel.', 'error');
     }
 }
 
