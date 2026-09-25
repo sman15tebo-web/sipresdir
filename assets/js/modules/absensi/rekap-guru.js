@@ -187,8 +187,8 @@ async function exportToExcel() {
             row.nisn,
             row.nama,
             row.kelas,
-            row.jamDatang,
-            row.jamPulang,
+            row.jam_datang,
+            row.jam_pulang,
             (row.keterangan || '').startsWith('Surat:') ? 'Melampirkan Bukti' : row.keterangan,
             row.status
         ]);
@@ -256,8 +256,8 @@ async function doActualExportExcelAbsensi(data) {
                 row.nisn,
                 row.nama,
                 row.kelas,
-                row.jamDatang,
-                row.jamPulang,
+                row.jam_datang,
+                row.jam_pulang,
                 (row.keterangan || '').startsWith('Surat:') ? 'Melampirkan Bukti' : row.keterangan,
                 row.status
             ]);
@@ -515,16 +515,66 @@ async function processDailyExportCustom(btnElement) {
 
     try {
         const res = await fetchAPI('tarikDataExcelHarian', { tglString: tglDipilih, filterKelas: filterKelas });
-        btnElement.innerHTML = originalText; btnElement.disabled = false;
-
-        if (!res || !res.success) { showAlert('error', res ? res.message : 'Gagal mengambil data.'); return; }
+        
+        if (!res || !res.success) { 
+            btnElement.innerHTML = originalText; btnElement.disabled = false;
+            showAlert('error', res ? res.message : 'Gagal mengambil data.'); 
+            return; 
+        }
+        
         const data = Array.isArray(res.data) ? res.data : [];
-        if (!data || data.length === 0) { showAlert('warning', 'Tidak ada data presensi pada tanggal tersebut.'); return; }
+        if (!data || data.length === 0) { 
+            btnElement.innerHTML = originalText; btnElement.disabled = false;
+            showAlert('warning', 'Tidak ada data presensi pada tanggal tersebut.'); 
+            return; 
+        }
 
         if (typeof ExcelJS === 'undefined') {
+            btnElement.innerHTML = originalText; btnElement.disabled = false;
             showAlert('error', 'Library ExcelJS belum termuat!');
             return;
         }
+
+        let headers = ["No", "NISN", "Nama Siswa", "Kelas", "Jam Datang", "Jam Pulang", "Status", "Keterangan"];
+        let dataRows = data.map((row, idx) => {
+            let jd = String(row.jam_datang || "-"); if (jd.length > 5) jd = jd.substring(0, 5);
+            let jp = String(row.jam_pulang || "-"); if (jp.length > 5) jp = jp.substring(0, 5);
+            const cleanKet = (row.keterangan || '').startsWith('Surat:') ? 'Melampirkan Bukti' : row.keterangan;
+            return [idx + 1, row.nisn, row.nama, row.kelas, jd, jp, row.status, cleanKet];
+        });
+
+        const formattedDate = new Date(tglDipilih).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        if (typeof showExcelPreviewModal === 'function') {
+            btnElement.innerHTML = originalText; btnElement.disabled = false;
+            showExcelPreviewModal(
+                'LAPORAN ABSENSI HARIAN SISWA', 
+                `TANGGAL: ${formattedDate.toUpperCase()} | KELAS: ${filterKelas ? filterKelas.toUpperCase() : 'SEMUA KELAS'}`, 
+                headers, 
+                dataRows, 
+                async () => {
+                    await doActualExportDaily(data, tglDipilih, filterKelas, formattedDate);
+                }
+            );
+        } else {
+            await doActualExportDaily(data, tglDipilih, filterKelas, formattedDate);
+            btnElement.innerHTML = originalText; btnElement.disabled = false;
+        }
+
+    } catch (err) {
+        btnElement.innerHTML = originalText; btnElement.disabled = false;
+        showAlert('error', 'Koneksi Server Gagal: ' + err.message);
+    }
+}
+
+async function doActualExportDaily(data, tglDipilih, filterKelas, formattedDate) {
+    try {
+        Swal.fire({
+            title: 'Mengunduh File...',
+            html: 'Mohon tunggu sebentar',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(`Harian`);
@@ -537,7 +587,6 @@ async function processDailyExportCustom(btnElement) {
 
         worksheet.mergeCells('A2:H2');
         const titleCell2 = worksheet.getCell('A2');
-        const formattedDate = new Date(tglDipilih).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         titleCell2.value = `TANGGAL: ${formattedDate.toUpperCase()} | KELAS: ${filterKelas ? filterKelas.toUpperCase() : 'SEMUA KELAS'}`;
         titleCell2.font = { size: 12, bold: true };
         titleCell2.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -562,8 +611,8 @@ async function processDailyExportCustom(btnElement) {
         });
 
         data.forEach((row, idx) => {
-            let jd = String(row.jamDatang || "-"); if (jd.length > 5) jd = jd.substring(0, 5);
-            let jp = String(row.jamPulang || "-"); if (jp.length > 5) jp = jp.substring(0, 5);
+            let jd = String(row.jam_datang || "-"); if (jd.length > 5) jd = jd.substring(0, 5);
+            let jp = String(row.jam_pulang || "-"); if (jp.length > 5) jp = jp.substring(0, 5);
 
             const cleanKet = (row.keterangan || '').startsWith('Surat:') ? 'Melampirkan Bukti' : row.keterangan;
             const r = worksheet.addRow([idx + 1, row.nisn, row.nama, row.kelas, jd, jp, row.status, cleanKet]);
@@ -581,11 +630,10 @@ async function processDailyExportCustom(btnElement) {
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `Absensi_Harian_${tglDipilih}_${filterKelas || 'Semua'}.xlsx`);
 
-        showAlert('success', 'Download Berhasil!');
+        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'File Excel berhasil diunduh!', timer: 2000, showConfirmButton: false });
 
     } catch (err) {
-        btnElement.innerHTML = originalText; btnElement.disabled = false;
-        showAlert('error', 'Koneksi Server Gagal: ' + err.message);
+        Swal.fire('Error', 'Gagal membuat file Excel: ' + err.message, 'error');
     }
 }
 
