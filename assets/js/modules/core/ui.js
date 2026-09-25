@@ -465,7 +465,11 @@ window.lihatBuktiAdmin = function (nisn) {
         row.forEach((cell, i) => {
             let align = (i === 0 || i > 3) ? 'text-center' : 'text-left';
             if (typeof cell === 'number') align = 'text-center';
-            tbodyHtml += `<td class="border border-gray-300 p-2 text-xs ${align} whitespace-nowrap">${cell !== null && cell !== undefined ? cell : ''}</td>`;
+            
+            // Allow wrapping for the last column (usually Keterangan/Catatan) to avoid it being too wide
+            let wrapClass = (i === row.length - 1) ? 'whitespace-normal min-w-[200px] max-w-[300px] break-words' : 'whitespace-nowrap';
+            
+            tbodyHtml += `<td class="border border-gray-300 p-2 text-xs ${align} ${wrapClass}">${cell !== null && cell !== undefined ? cell : ''}</td>`;
         });
         tbodyHtml += '</tr>';
     });
