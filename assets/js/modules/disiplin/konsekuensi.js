@@ -327,27 +327,24 @@ function cetakKonsekuensi(idx) {
     }
     
     let html = `
-    <html><head><title>Cetak Konsekuensi</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; color: #000; font-size: 13px; line-height: 1.4; }
-        .text-center { text-align: center; }
-        .font-bold { font-weight: bold; }
-        h2 { margin: 0 0 5px 0; font-size: 16px; text-transform: uppercase; }
-        h3 { margin: 0 0 15px 0; font-size: 14px; font-weight: normal; }
-        .info { margin-bottom: 10px; }
-        .info div { margin-bottom: 3px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
-        th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
-        th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
-        .keterangan-box { border: 1px solid #000; border-top: none; padding: 10px 15px; }
-        .keterangan-title { font-weight: bold; margin-bottom: 8px; }
-        .checkbox-item { margin-bottom: 5px; display: inline-flex; align-items: center; margin-right: 20px; }
-        .box { width: 12px; height: 12px; border: 1px solid #000; display: inline-block; margin-right: 6px; }
-        .catatan-line { border-bottom: 1px dotted #000; width: 100%; display: inline-block; margin-top: 12px; height: 15px; }
-        @media print { button { display: none; } }
-    </style>
-    </head><body>
-        <div style="max-width: 800px; margin: 0 auto;">
+    <div style="font-family: 'Inter', Arial, sans-serif; color: #000; font-size: 13px; line-height: 1.4;">
+        <style>
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            h2 { margin: 0 0 5px 0; font-size: 16px; text-transform: uppercase; font-weight: bold; }
+            h3 { margin: 0 0 15px 0; font-size: 14px; font-weight: normal; }
+            .info { margin-bottom: 10px; }
+            .info div { margin-bottom: 3px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
+            th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+            .keterangan-box { border: 1px solid #000; padding: 10px 15px; }
+            .keterangan-title { font-weight: bold; margin-bottom: 8px; display: inline-block; }
+            .checkbox-item { margin-bottom: 5px; display: inline-flex; align-items: center; margin-right: 20px; }
+            .box { width: 12px; height: 12px; border: 1px solid #000; display: inline-block; margin-right: 6px; }
+            .catatan-line { border-bottom: 1px dotted #000; width: 100%; display: inline-block; margin-top: 12px; height: 15px; }
+        </style>
+        <div style="max-width: 800px; margin: 0 auto; background: white; padding: 10px;">
             <div class="text-center font-bold">
                 <h2>BUKTI MELAKSANAKAN KONSEKUENSI SISWA TERLAMBAT</h2>
                 <h3>${appName}</h3>
@@ -372,7 +369,7 @@ function cetakKonsekuensi(idx) {
             
             <div class="keterangan-box">
                 <div style="display: flex; align-items: center; flex-wrap: wrap;">
-                    <div class="keterangan-title" style="margin-bottom: 0; margin-right: 20px;">KETERANGAN PELAKSANAAN:</div>
+                    <div class="keterangan-title" style="margin-right: 20px;">KETERANGAN PELAKSANAAN:</div>
                     <div class="checkbox-item"><span class="box"></span> Selesai dan Tuntas</div>
                     <div class="checkbox-item" style="margin-right: 0;"><span class="box"></span> Kerjakan Kembali</div>
                 </div>
@@ -380,12 +377,38 @@ function cetakKonsekuensi(idx) {
                 <span class="catatan-line"></span>
             </div>
         </div>
-        <script>window.onload = function() { window.print(); }</script>
-    </body></html>`;
+    </div>`;
     
-    const win = window.open('', '_blank', 'width=800,height=600');
-    win.document.write(html);
-    win.document.close();
+    if (typeof showDocumentPreviewModal === 'function') {
+        showDocumentPreviewModal(
+            'Pratinjau Cetak Konsekuensi',
+            '',
+            html,
+            () => { // callbackPrint
+                const printWindow = window.open('', '_blank', 'width=800,height=600');
+                printWindow.document.write('<html><head><title>Cetak Konsekuensi</title></head><body style="margin:0; padding:20px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">');
+                printWindow.document.write(html);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            },
+            null // callbackDownload
+        );
+    } else {
+        const win = window.open('', '_blank', 'width=800,height=600');
+        win.document.write('<html><head><title>Cetak Konsekuensi</title></head><body style="margin:0; padding:20px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">');
+        win.document.write(html);
+        win.document.write('</body></html>');
+        win.document.close();
+        win.focus();
+        setTimeout(() => {
+            win.print();
+        }, 500);
+    }
 }
 
 async function loadHalamanKonsekuensi() { 
