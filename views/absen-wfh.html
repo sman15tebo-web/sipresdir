@@ -1,0 +1,37 @@
+<div id="view-absen-wfh" class="view-section animate-fade-in">
+                    <div class="max-w-sm mx-auto bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+                        <div class="p-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center">
+                            <h3 class="font-bold text-lg"><i class="fas fa-camera-retro mr-2"></i> Presensi WFH</h3>
+                            <p class="text-[10px] opacity-80 mt-1">Pastikan wajah terlihat jelas dan lokasi aktif</p>
+                        </div>
+                        <div class="p-5">
+                            <div class="relative w-full aspect-[3/4] bg-black rounded-xl overflow-hidden mb-4 shadow-inner flex items-center justify-center">
+                                <video id="wfhVideo" autoplay="" playsinline="" class="w-full h-full object-cover"></video>
+                                <img id="wfhPreview" class="hidden w-full h-full object-cover">
+                                <div id="wfhLoading" class="absolute inset-0 flex items-center justify-center bg-gray-900/80 text-white flex-col z-10 hidden">
+                                    <i class="fas fa-circle-notch fa-spin text-3xl mb-2 text-indigo-400"></i>
+                                    <p class="text-xs font-bold" id="wfhLoadingText">Menyiapkan Kamera...</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-indigo-50 p-3 rounded-lg mb-4 text-xs font-mono text-indigo-800 text-center flex flex-col items-center">
+                                <span class="font-bold uppercase text-[10px] text-indigo-500 mb-1">Kordinat GPS</span>
+                                <span id="gpsLocationText"><i class="fas fa-map-marker-alt animate-bounce"></i> Menunggu
+                                    lokasi...</span>
+                            </div>
+
+                            <div class="flex gap-2" id="wfhControlContainer">
+                                <button onclick="if(wfhStream){wfhStream.getTracks().forEach(t=>t.stop());} loadSiswaDashboard();" class="flex-1 bg-rose-50 text-rose-600  py-3 rounded-xl font-bold text-xs hover:bg-rose-100 transition shadow-sm">
+                                    <i class="fas fa-times"></i> Batal
+                                </button>
+                                <button onclick="startWFHCamera()" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-xs hover:bg-gray-200 transition shadow-sm">
+                                    <i class="fas fa-sync-alt"></i> Ulang
+                                </button>
+                                <button onclick="captureAndSendWFH()" id="btnCaptureWFH" disabled="" class="flex-[2] bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-camera mr-1"></i> Kirim Presensi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>

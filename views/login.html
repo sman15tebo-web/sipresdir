@@ -1,0 +1,169 @@
+<div class="relative min-h-screen flex items-center justify-center overflow-hidden animated-gradient">
+        <div class="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full mix-blend-overlay filter blur-3xl opacity-30 animate-pulse -translate-x-1/2 -translate-y-1/2">
+        </div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-pink-400/20 rounded-full mix-blend-overlay filter blur-3xl opacity-30 animate-pulse translate-x-1/2 translate-y-1/2">
+        </div>
+
+        <div class="w-full max-w-5xl flex flex-col lg:flex-row shadow-[0_8px_32px_0_rgba(31,38,135,0.3)] rounded-3xl overflow-hidden z-10 mx-4 animate-fade-in bg-white/10 backdrop-blur-2xl border border-white/20">
+
+            <div id="panelBranding" class="w-full lg:w-5/12 p-6 lg:p-12 flex flex-col justify-between relative text-white border-b lg:border-b-0 lg:border-r border-white/20 bg-transparent">
+                <div class="relative z-10">
+                    <center>
+                        <div class="flex justify-center items-center gap-4 mb-4">
+                            <img src="" class="dyn-logoInstansi h-14 lg:h-16 w-auto max-w-full transition-all duration-300 drop-shadow-md">
+                            <img src="" class="dyn-logo h-14 lg:h-16 w-auto max-w-full transition-all duration-300 drop-shadow-md">
+                        </div>
+                    </center>
+
+                    <div class="text-center mb-9 lg:mb-12 mt-3 lg:mt-0">
+                        <center>
+                            <h3 class="dyn-namaInstansi text-sm lg:text-lg font-bold leading-tight mb-1 text-indigo-100 drop-shadow-sm uppercase tracking-wider">
+                                Memuat Instansi...
+                            </h3>
+                            <h4 class="dyn-namasekolah text-xl lg:text-3xl font-bold leading-tight mb-0 text-transparent bg-clip-text bg-gradient-to-r from-white to-indigo-100 drop-shadow-md">
+                                Memuat...
+                            </h4>
+                        </center>
+                    </div>
+
+                    <center>
+                        <div class="judul-container flex items-center justify-center gap-2">
+                            <img src="assets/img/imgsipresdir.png" alt="Logo" class="w-8 lg:w-[50px] object-contain">
+                            <h1 class="text-3xl lg:text-5xl font-bold leading-tight mb-0 text-white drop-shadow-lg mt-0">
+                                SiPresDiR+</h1>
+                        </div>
+                        <p class="font-bold text-xs lg:text-sm text-indigo-100 mt-2 tracking-wide drop-shadow-md">Sistem
+                            Presensi
+                            Digital Realtime <br> + Catatan Pelanggaran Siswa</p>
+                    </center>
+                </div>
+
+                <div class="relative z-10 mt-6 lg:mt-10 flex flex-col items-center gap-2 text-[10px] lg:text-xs font-medium">
+                    <div class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white font-semibold shadow-sm hover:bg-white/20 transition-all cursor-pointer">
+                        <a href="#" class="dyn-website-link" rel="dofollow"><i class="fas fa-globe mr-1"></i> <span class="dyn-website">Memuat...</span></a>
+                    </div>
+                    <p class="text-[9px] text-black/70 font-semibold tracking-wide">App Version 3.26.09</p>
+                </div>
+
+                <div id="mobileLoginBtnWrapper" class="w-full mt-10 pt-4 pb-2 z-50 lg:hidden animate-bounce">
+                    <button onclick="showMobileLogin()" type="button" class="w-full py-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-2xl shadow-lg border border-white/30 transition transform active:scale-95 flex justify-center items-center gap-2">
+                        Untuk masuk klik disini <i class="fas fa-sign-in-alt text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="panelForm" class="w-full lg:w-7/12 p-6 lg:p-12 bg-white/5 flex items-center relative">
+                <!-- Inner subtle glow to enhance glass effect -->
+                <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+                <div class="w-full max-w-md mx-auto relative z-10">
+                    <button onclick="hideMobileLogin()" type="button" class="block lg:hidden mb-6 text-indigo-100 hover:text-white bg-white/10 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm border border-white/20 backdrop-blur-md w-fit">
+                        <i class="fas fa-arrow-left"></i> Kembali
+                    </button>
+                    <div class="text-center lg:text-left mb-6 lg:mb-10">
+                        <center>
+                            <img src="assets/img/imgsipresdir.png" class="w-12 lg:w-[70px] object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]">
+                            <h2 class="text-xl lg:text-2xl font-bold text-white mt-4 drop-shadow-md">Welcome
+                                to SiPresDir Hybrid</h2>
+                            <p class="text-indigo-50 text-xs lg:text-sm mt-1 drop-shadow-sm font-medium">Silakan login
+                                menggunakan akun Anda</p>
+                        </center>
+                    </div>
+
+                    <div class="bg-black/20 p-1.5 rounded-xl flex mb-6 lg:mb-8 border border-white/10 relative shadow-inner">
+                        <button id="btnSiswaTab" onclick="switchLoginTab('siswa')" class="flex-1 py-2.5 lg:py-3 text-sm font-bold rounded-lg shadow-md bg-white/20 text-white ring-1 ring-white/30 transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-sm">
+                            <i class="fas fa-user-graduate"></i> Siswa
+                        </button>
+                        <button id="btnAdminTab" onclick="switchLoginTab('admin')" class="flex-1 py-2.5 lg:py-3 text-sm font-medium rounded-lg text-indigo-100 hover:text-white hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2">
+                            <i class="fas fa-chalkboard-teacher"></i> Walas/Admin
+                        </button>
+                    </div>
+
+                    <form onsubmit="handleLogin(event)" class="space-y-4 lg:space-y-5">
+                        <div id="formSiswaLogin" class="animate-fade-in space-y-4 lg:space-y-5">
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-50 uppercase tracking-wider mb-2 ml-1 drop-shadow-md">NISN
+                                    Siswa</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-indigo-200">
+                                        <i class="far fa-id-card text-lg"></i>
+                                    </div>
+                                    <input type="text" inputmode="numeric" pattern="[0-9]*" onblur="padNisn(this)" id="nisn" class="block w-full pl-12 pr-4 py-3 bg-white/20 border-white/20 border rounded-xl text-white text-sm placeholder-indigo-100/70 focus:bg-white/30 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all backdrop-blur-sm" placeholder="Masukkan NISN">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-50 uppercase tracking-wider mb-2 ml-1 drop-shadow-md">Password</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-indigo-200">
+                                        <i class="fas fa-lock text-lg"></i>
+                                    </div>
+                                    <input type="password" id="passwordSiswa" class="block w-full pl-12 pr-10 py-3 bg-white/20 border-white/20 border rounded-xl text-white text-sm placeholder-indigo-100/70 focus:bg-white/30 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all backdrop-blur-sm" placeholder="Password Siswa">
+                                    <button type="button" onclick="togglePasswordSiswa()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-indigo-200 hover:text-white focus:outline-none transition">
+                                        <i class="fas fa-eye" id="toggleSiswaPassIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="formAdminLogin" class="hidden space-y-4 lg:space-y-5 animate-fade-in">
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-50 uppercase tracking-wider mb-2 ml-1 drop-shadow-md">Username</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-indigo-200 group-focus-within:text-white transition-colors">
+                                        <i class="far fa-user text-lg"></i>
+                                    </div>
+                                    <input type="text" id="username" class="block w-full pl-12 pr-4 py-3 lg:py-4 bg-white/20 border-white/20 border rounded-xl text-white text-sm focus:bg-white/30 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all placeholder-indigo-100/70 backdrop-blur-sm" placeholder="Username">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-50 uppercase tracking-wider mb-2 ml-1 drop-shadow-md">Password</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-indigo-200 group-focus-within:text-white transition-colors">
+                                        <i class="fas fa-lock text-lg"></i>
+                                    </div>
+                                    <input type="password" id="password" class="block w-full pl-12 pr-10 py-3 lg:py-4 bg-white/20 border-white/20 border rounded-xl text-white text-sm focus:bg-white/30 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all placeholder-indigo-100/70 backdrop-blur-sm" placeholder="Password">
+                                    <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-indigo-200 hover:text-white focus:outline-none transition">
+                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-3 lg:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/50 hover:shadow-indigo-900/80 border border-white/30 transition-all transform active:scale-[0.98] text-sm flex justify-center items-center gap-3 backdrop-blur-md">
+                            <span>LOGIN</span> <i class="fas fa-arrow-right-long"></i>
+                        </button>
+                    </form>
+
+                    <div id="loginError" class="mt-6 hidden p-4 bg-red-500/20 border border-red-500/30 rounded-xl flex items-start gap-3 animate-fade-in backdrop-blur-md">
+                        <div class="p-2 bg-red-500/30 rounded-full text-white shrink-0"><i class="fas fa-exclamation-triangle text-xs"></i></div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white drop-shadow-sm">Akses Ditolak</h4>
+                            <p id="errorText" class="text-xs text-red-100 mt-0.5">Username atau password salah.</p>
+                        </div>
+                    </div>
+                    <br>
+                    <marquee class="dyn-runningtext px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white font-medium drop-shadow-sm">
+                        Memuat Pengumuman...</marquee>
+                </div>
+            </div>
+        </div>
+        <footer class="absolute bottom-0 w-full z-20 px-6 py-4 border-t border-white/10 bg-black/5 backdrop-blur-sm">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 text-[10px] md:text-xs font-medium text-indigo-100/70">
+                <div class="text-center md:text-left">
+                    <p>© <span class="dyn-tahun"></span> <span class="text-white font-bold">SiPresDir Hybrid</span> -
+                        <span class="dyn-namasekolah"></span>.<span class="hidden sm:inline">All Rights Reserved.</span>
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <a href="#" onclick="showPrivacyModal(event)" class="hover:text-white transition-colors duration-300 hidden sm:block">Privacy Policy</a>
+                    <span class="hidden sm:block text-white/20">|</span>
+                    <span class="flex items-center gap-1"> Powered by :
+                        <a href="https://www.farypin-inovasiteknologi.com" target="_blank" class="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white transition-all duration-300 group">
+                            <span>PT Farypin Inovasi Teknologi</span>
+                        </a>
+                    </span>
+                </div>
+            </div>
+        </footer>
+
+    </div>
