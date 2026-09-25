@@ -26,6 +26,8 @@ async function loadDataSiswa() {
             try {
                 tableState.siswa.fullData = JSON.parse(cached);
                 processTableData('siswa');
+                // Return immediately to save bandwidth, unless forced refresh clears the cache
+                return;
             } catch (e) { }
         } else {
             document.getElementById('tbody-siswa').innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat data siswa...</td></tr>';
@@ -82,6 +84,7 @@ async function loadDataGuru() {
             try {
                 tableState.guru.fullData = JSON.parse(cached);
                 processTableData('guru');
+                return; // Return immediately to save bandwidth
             } catch (e) { }
         } else {
             document.getElementById('tbody-guru').innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat data guru...</td></tr>';
@@ -159,29 +162,51 @@ function renderSiswaRows(data, startIdx) {
             tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">Data tidak ditemukan.</td></tr>';
         return;
     }
-    tbody.innerHTML = data.map((siswa, i) => `
-    <tr class="hover:bg-gray-50 transition border-b border-gray-50 group">
-        <td class="p-4 text-center text-gray-500 text-sm">${startIdx + i + 1}</td>
-        <td class="p-4 whitespace-normal min-w-[120px]">
-            <div class="flex items-start">
-                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mr-3 mt-1 shrink-0">${siswa.nama.charAt(0)}</div>
-                <div class="whitespace-normal">
-                    <div class="font-bold text-sm text-gray-900 break-words leading-tight">${siswa.nama}</div>
-                    <div class="text-xs text-gray-500 md:hidden mt-0.5">${siswa.nisn}</div>
-                </div>
-            </div>
-        </td>
-        <td class="p-4 hidden md:table-cell text-sm text-gray-600 font-mono">${siswa.nisn}</td>
-        <td class="p-4 hidden sm:table-cell"><span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold">${siswa.kelas}</span></td>
-            <td class="p-4 hidden lg:table-cell text-xs text-gray-600">${siswa.email || '-'}</td>
-        <td class="p-4 text-center">
-            <div class="flex justify-center space-x-2 opacity-80 group-hover:opacity-100">
-                <button onclick='viewSiswa(${JSON.stringify(siswa).replace(/'/g, "&#39;")})' class="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition"><i class="fas fa-eye"></i></button>
-                <button onclick='editSiswa(${JSON.stringify(siswa).replace(/'/g, "&#39;")})' class="p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition"><i class="fas fa-edit"></i></button>
-                <button onclick="loadQRCodeSiswa('${siswa.nisn}', '${siswa.nama.replace(/'/g, "\\'")}', '${siswa.kelas}')" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"><i class="fas fa-qrcode"></i></button>
-            </div>
-        </td>
-    </tr>`).join('');
+    tbody.innerHTML = '';
+    
+    // [OPTIMASI KILAT] Render Chunking (Mencegah hang di HP)
+    const chunkSize = 25;
+    let index = 0;
+    
+    function renderChunk() {
+        const chunk = data.slice(index, index + chunkSize);
+        if (chunk.length === 0) return;
+        
+        const html = chunk.map((siswa, i) => {
+            const actualIndex = index + i;
+            return `
+            <tr class="hover:bg-gray-50 transition border-b border-gray-50 group">
+                <td class="p-4 text-center text-gray-500 text-sm">${startIdx + actualIndex + 1}</td>
+                <td class="p-4 whitespace-normal min-w-[120px]">
+                    <div class="flex items-start">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold mr-3 mt-1 shrink-0">${(siswa.nama || 'U').charAt(0)}</div>
+                        <div class="whitespace-normal">
+                            <div class="font-bold text-sm text-gray-900 break-words leading-tight">${siswa.nama}</div>
+                            <div class="text-xs text-gray-500 md:hidden mt-0.5">${siswa.nisn}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-4 hidden md:table-cell text-sm text-gray-600 font-mono">${siswa.nisn}</td>
+                <td class="p-4 hidden sm:table-cell"><span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold">${siswa.kelas}</span></td>
+                <td class="p-4 hidden lg:table-cell text-xs text-gray-600">${siswa.email || '-'}</td>
+                <td class="p-4 text-center">
+                    <div class="flex justify-center space-x-2 opacity-80 group-hover:opacity-100">
+                        <button onclick='viewSiswa(${JSON.stringify(siswa).replace(/'/g, "&#39;")})' class="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition"><i class="fas fa-eye"></i></button>
+                        <button onclick='editSiswa(${JSON.stringify(siswa).replace(/'/g, "&#39;")})' class="p-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition"><i class="fas fa-edit"></i></button>
+                        <button onclick="loadQRCodeSiswa('${siswa.nisn}', '${String(siswa.nama).replace(/'/g, "\\'")}', '${siswa.kelas}')" class="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"><i class="fas fa-qrcode"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+        
+        tbody.insertAdjacentHTML('beforeend', html);
+        index += chunkSize;
+        
+        if (index < data.length) {
+            requestAnimationFrame(renderChunk);
+        }
+    }
+    renderChunk();
 }
 
 function renderGuruRows(data, startIdx) {
