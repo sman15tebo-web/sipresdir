@@ -60,7 +60,21 @@ async function applyFilter() {
         container.classList.remove('hidden');
 
         if (result.success) {
-            tableState.rekap.fullData = result.data;
+            // Sort data by: Tanggal (asc), Kelas (asc), Nama (asc)
+            let sortedData = result.data.sort((a, b) => {
+                let dateA = new Date(a.tanggal || 0).getTime();
+                let dateB = new Date(b.tanggal || 0).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+                
+                let kelasA = String(a.kelas || '').toUpperCase();
+                let kelasB = String(b.kelas || '').toUpperCase();
+                if (kelasA !== kelasB) return kelasA.localeCompare(kelasB, undefined, {numeric: true});
+                
+                let namaA = String(a.nama || '').toUpperCase();
+                let namaB = String(b.nama || '').toUpperCase();
+                return namaA.localeCompare(namaB);
+            });
+            tableState.rekap.fullData = sortedData;
             processTableData('rekap');
         } else {
             tableState.rekap.fullData = [];
