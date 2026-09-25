@@ -561,3 +561,64 @@ window.lihatBuktiAdmin = function (nisn) {
         }
     });
 };
+
+window.showDocumentPreviewModal = function(title, subtitle, htmlContent, callbackPrint, callbackDownload, downloadText = 'Unduh', downloadIcon = 'fa-download') {
+    const modalHtml = `
+        <div class="flex flex-col h-[75vh]">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 bg-gray-50 p-2 rounded-lg">
+                <div class="flex gap-2">
+                    <button id="btnZoomInDoc" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-plus text-gray-500 mr-1"></i> Zoom In</button>
+                    <button id="btnZoomOutDoc" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-minus text-gray-500 mr-1"></i> Zoom Out</button>
+                </div>
+                <div class="flex gap-2">
+                    ${callbackPrint ? `<button id="btnPrintDoc" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas fa-print mr-1"></i> Print</button>` : ''}
+                    ${callbackDownload ? `<button id="btnDownloadDoc" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas ${downloadIcon} mr-1"></i> ${downloadText}</button>` : ''}
+                </div>
+            </div>
+            
+            <div id="previewDocContainer" class="flex-1 overflow-auto border border-gray-300 bg-gray-200 shadow-inner relative flex justify-center p-4">
+                <div id="docPrintArea" class="bg-white shadow-md" style="width: 210mm; min-height: 297mm; padding: 20mm; transform-origin: top center; zoom: 1;">
+                    ${htmlContent}
+                </div>
+            </div>
+        </div>
+    `;
+
+    Swal.fire({
+        title: title || 'Pratinjau Dokumen',
+        html: modalHtml,
+        width: '95vw',
+        showConfirmButton: false,
+        showCloseButton: true,
+        customClass: {
+            popup: 'rounded-xl shadow-2xl',
+            title: 'text-left text-lg font-bold text-gray-800 border-b pb-3 m-0 pl-2'
+        },
+        didOpen: () => {
+            let currentZoom = 1;
+            const container = document.getElementById('docPrintArea');
+            
+            document.getElementById('btnZoomInDoc').addEventListener('click', () => {
+                if(currentZoom < 2.0) currentZoom += 0.1;
+                container.style.zoom = currentZoom;
+            });
+            document.getElementById('btnZoomOutDoc').addEventListener('click', () => {
+                if (currentZoom > 0.4) currentZoom -= 0.1;
+                container.style.zoom = currentZoom;
+            });
+            
+            if (callbackPrint) {
+                document.getElementById('btnPrintDoc').addEventListener('click', () => {
+                    callbackPrint();
+                });
+            }
+
+            if (callbackDownload) {
+                document.getElementById('btnDownloadDoc').addEventListener('click', () => {
+                    Swal.close();
+                    callbackDownload();
+                });
+            }
+        }
+    });
+};
