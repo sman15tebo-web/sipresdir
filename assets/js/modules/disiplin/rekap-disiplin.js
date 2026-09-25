@@ -218,6 +218,40 @@ async function exportExcelKasus() {
             return;
         }
 
+        let headers = ["No", "NISN", "Nama Siswa", "Kelas", "Jumlah Kasus", "Total Poin"];
+        let dataRows = window.kasusLeaderboardData.map((d, i) => {
+            return [i + 1, d.nisn, d.nama, d.kelas, d.kasus, d.totalPoin];
+        });
+
+        if (typeof showExcelPreviewModal === 'function') {
+            showExcelPreviewModal(
+                'REKAPITULASI PELANGGARAN SISWA', 
+                '', 
+                headers, 
+                dataRows, 
+                async () => {
+                    await doActualExportKasus();
+                }
+            );
+        } else {
+            await doActualExportKasus();
+        }
+
+    } catch (err) {
+        console.error(err);
+        showAlert('error', 'Gagal membuat file Excel.');
+    }
+}
+
+async function doActualExportKasus() {
+    try {
+        Swal.fire({
+            title: 'Mengunduh File...',
+            html: 'Mohon tunggu sebentar',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet(`Rekap Pelanggaran`);
 
@@ -263,9 +297,10 @@ async function exportExcelKasus() {
 
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), "Rekap_Pelanggaran_Siswa.xlsx");
-        showAlert('success', 'File berhasil diunduh!');
+        
+        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Laporan Berhasil Diunduh!', timer: 2000, showConfirmButton: false });
     } catch (error) {
-        showAlert('error', 'Gagal membuat file Excel: ' + error.message);
+        Swal.fire('Error', 'Gagal membuat file Excel.', 'error');
     }
 }
 
@@ -368,14 +403,51 @@ function renderHistoryKasus(data) {
 }
 
 function cetakPDFDetailKasus() {
-    showLoading();
-    if (typeof html2pdf === 'undefined') {
-        const script = document.createElement('script');
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-        script.onload = () => executePDFDownload();
-        document.head.appendChild(script);
+    const htmlContent = document.getElementById('tableDetailKasusPdf').outerHTML;
+    const styleContent = `
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            #docPrintArea { font-family: 'Inter', Arial, sans-serif; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+            th { border: 1px solid #fda4af; padding: 10px; text-align: center; background-color: #ffe4e6; color: #be123c; }
+            td { border: 1px solid #fda4af; padding: 10px; }
+            p { font-size: 10px; text-align: right; color: #9ca3af; margin-top: 30px; }
+            h2 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+            h3 { text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 20px; color: #4b5563; }
+            .info-div { font-size: 12px; margin-bottom: 10px; }
+        </style>
+    `;
+
+    if (typeof showDocumentPreviewModal === 'function') {
+        showDocumentPreviewModal(
+            'Pratinjau PDF', 
+            '', 
+            styleContent + htmlContent, 
+            null, // No print button for PDF
+            () => {
+                showLoading();
+                if (typeof html2pdf === 'undefined') {
+                    const script = document.createElement('script');
+                    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+                    script.onload = () => executePDFDownload();
+                    document.head.appendChild(script);
+                } else {
+                    executePDFDownload();
+                }
+            },
+            'Unduh PDF',
+            'fa-file-pdf'
+        );
     } else {
-        executePDFDownload();
+        showLoading();
+        if (typeof html2pdf === 'undefined') {
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+            script.onload = () => executePDFDownload();
+            document.head.appendChild(script);
+        } else {
+            executePDFDownload();
+        }
     }
 }
 
