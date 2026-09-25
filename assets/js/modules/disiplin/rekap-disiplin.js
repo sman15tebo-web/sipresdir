@@ -403,26 +403,49 @@ function renderHistoryKasus(data) {
 }
 
 function cetakPDFDetailKasus() {
-    const htmlContent = document.getElementById('tableDetailKasusPdf').outerHTML;
-    const styleContent = `
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            #docPrintArea { font-family: 'Inter', Arial, sans-serif; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-            th { border: 1px solid #fda4af; padding: 10px; text-align: center; background-color: #ffe4e6; color: #be123c; }
-            td { border: 1px solid #fda4af; padding: 10px; }
-            p { font-size: 10px; text-align: right; color: #9ca3af; margin-top: 30px; }
-            h2 { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 5px; }
-            h3 { text-align: center; font-size: 14px; font-weight: 600; margin-bottom: 20px; color: #4b5563; }
-            .info-div { font-size: 12px; margin-bottom: 10px; }
-        </style>
+    const isSiswa = currentUser.role === 'siswa';
+    const nama = isSiswa ? currentUser.nama : window.currentDetailNama;
+    const nisn = isSiswa ? currentUser.nisn : window.currentDetailNisn;
+    const kelas = isSiswa ? currentUser.kelas : window.currentDetailKelas;
+
+    const tglMulai = document.getElementById('filterMulaiDetail') ? document.getElementById('filterMulaiDetail').value : '';
+    const tglAkhir = document.getElementById('filterAkhirDetail') ? document.getElementById('filterAkhirDetail').value : '';
+    const periodeStr = (tglMulai || tglAkhir) ? `<p style="text-align: center; font-size: 12px; margin-bottom: 15px; color: #666;">Periode: ${tglMulai || 'Awal'} s/d ${tglAkhir || 'Akhir'}</p>` : '';
+
+    const tableContent = document.getElementById('tbody-history-kasus').innerHTML;
+
+    const htmlContent = `
+        <div style="padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2937;">
+            <h2 style="text-align: center; margin-bottom: 5px; color: #e11d48; font-weight: 800;">LAPORAN KEDISIPLINAN SISWA</h2>
+            ${periodeStr}
+            <div style="margin-bottom: 20px; border-bottom: 2px solid #fda4af; padding-bottom: 15px; background: #fff1f2; padding: 15px; border-radius: 8px;">
+                <p style="margin: 4px 0; font-size: 14px;"><b>Nama Siswa :</b> ${nama}</p>
+                <p style="margin: 4px 0; font-size: 14px;"><b>NISN :</b> ${nisn}</p>
+                <p style="margin: 4px 0; font-size: 14px;"><b>Kelas :</b> ${kelas}</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #e5e7eb;">
+                <thead>
+                    <tr style="background-color: #ffe4e6; color: #be123c;">
+                        <th style="border: 1px solid #fda4af; padding: 10px; text-align: center;">No</th>
+                        <th style="border: 1px solid #fda4af; padding: 10px; text-align: left;">Tanggal</th>
+                        <th style="border: 1px solid #fda4af; padding: 10px; text-align: left;">Pelanggaran</th>
+                        <th style="border: 1px solid #fda4af; padding: 10px; text-align: center;">Poin</th>
+                        <th style="border: 1px solid #fda4af; padding: 10px; text-align: left;">Pelapor / Catatan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableContent.includes("Tidak ada riwayat") ? '<tr><td colspan="5" style="text-align:center; padding:20px;">Tidak ada data riwayat di periode ini.</td></tr>' : tableContent}
+                </tbody>
+            </table>
+            <p style="margin-top: 30px; font-size: 10px; text-align: right; color: #9ca3af;">Dicetak dari Sistem SiPresDiR - ${new Date().toLocaleString('id-ID')}</p>
+        </div>
     `;
 
     if (typeof showDocumentPreviewModal === 'function') {
         showDocumentPreviewModal(
             'Pratinjau PDF', 
             '', 
-            styleContent + htmlContent, 
+            htmlContent, 
             null, // No print button for PDF
             () => {
                 showLoading();
