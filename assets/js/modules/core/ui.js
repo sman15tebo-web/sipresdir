@@ -389,24 +389,35 @@ function refreshData(type) {
 
     if (type === 'siswa') {
         tableState.siswa.fullData = [];
+        localStorage.removeItem('cache_data_siswa');
+        localStorage.removeItem('cache_data_siswa_master');
         loadDataSiswa();
-        showAlert('success', 'Data siswa diperbarui.');
+        showAlert('success', 'Memperbarui data siswa...');
     }
     else if (type === 'guru') {
         tableState.guru.fullData = [];
+        localStorage.removeItem('cache_data_guru');
+        localStorage.removeItem('cache_data_guru_master');
         loadDataGuru();
-        showAlert('success', 'Data guru diperbarui.');
+        showAlert('success', 'Memperbarui data guru...');
     }
     else if (type === 'dashboard') {
+        // Clear cached dashboard if exists
+        const dDate = new Date();
+        const dMonth = String(dDate.getMonth() + 1).padStart(2, '0');
+        const dDay = String(dDate.getDate()).padStart(2, '0');
+        const cacheKey = `dashboard_cache_${dDate.getFullYear()}${dMonth}${dDay}`;
+        localStorage.removeItem(cacheKey);
+
         if (currentUser.role === 'admin') loadAdminDashboard();
         else if (currentUser.role === 'guru') loadGuruDashboard();
         else loadSiswaDashboard();
-        showAlert('success', 'Statistik Dashboard diperbarui.');
+        showAlert('success', 'Memperbarui statistik Dashboard...');
     }
     else if (type === 'monitoring') {
         tableState.monitoring.fullData = [];
         loadMonitoringAbsensi();
-        showAlert('success', 'Data monitoring diperbarui.');
+        showAlert('success', 'Memperbarui data monitoring...');
     }
 
     if (btnIcon) setTimeout(() => btnIcon.classList.remove('fa-spin'), 1000);
