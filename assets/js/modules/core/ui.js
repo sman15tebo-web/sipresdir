@@ -57,7 +57,7 @@ function initDashboard() {
         menuHTML += createItem('Kelola Disiplin', 'fa-balance-scale', 'loadMasterPelanggaran()');
         menuHTML += createItem('Scan Presensi', 'fa-qrcode', 'loadScanAbsensi()');
         menuHTML += createItem('Konsekuensi Harian', 'fa-gavel', 'loadHalamanKonsekuensi()', false, 'hidden md:flex');
-        
+
         menuHTML += createItem('Pengaturan', 'fa-cog', 'loadPengaturan()');
 
     } else if (currentUser.role === 'guru') {
@@ -122,13 +122,13 @@ async function openSyncModal() {
         const config = await window.electronAPI.getOfflineConfig();
         const input = document.getElementById('syncLinkInput');
         const customLink = localStorage.getItem('customSyncLink');
-        
+
         if (customLink) {
             input.value = customLink;
         } else if (config && config.link_exec_sync) {
             input.value = config.link_exec_sync;
         }
-        
+
         const modal = document.getElementById('syncModal');
         modal.classList.remove('hidden');
         setTimeout(() => {
@@ -171,7 +171,7 @@ async function executeSync() {
     }
 
     statusDiv.className = 'rounded-lg p-4 text-sm mt-4 bg-gray-50 border border-gray-200 shadow-inner flex flex-col gap-2';
-    
+
     const updateProgress = (stepId, status, text) => {
         let el = document.getElementById(stepId);
         if (!el) {
@@ -180,13 +180,13 @@ async function executeSync() {
             el.className = 'flex items-center text-gray-700 font-medium';
             statusDiv.appendChild(el);
         }
-        
+
         let icon = '<i class="fas fa-circle text-gray-300 mr-2 text-xs"></i>';
         if (status === 'loading') icon = '<i class="fas fa-spinner fa-spin text-indigo-600 mr-2"></i>';
         else if (status === 'success') icon = '<i class="fas fa-check-circle text-green-500 mr-2"></i>';
         else if (status === 'error') icon = '<i class="fas fa-exclamation-circle text-red-500 mr-2"></i>';
         else if (status === 'warning') icon = '<i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i>';
-        
+
         el.innerHTML = `${icon} <span>${text}</span>`;
     };
 
@@ -237,7 +237,7 @@ async function executeSync() {
 
         const counts = result.counts || {};
         const localCounts = procRes.localCounts || {};
-        
+
         let summaryDiv = document.createElement('div');
         summaryDiv.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-800 text-sm font-semibold';
         summaryDiv.innerHTML = `✅ Sinkronisasi berhasil menyeluruh!<br/><span class="text-xs font-normal">Siswa: ${counts.siswa ?? localCounts.siswa ?? '-'} | Guru: ${counts.guru ?? localCounts.guru ?? '-'} | Absensi: ${counts.absensi ?? localCounts.absensi ?? '-'} | Konsekuensi: ${counts.jenisKonsekuensi ?? localCounts.jenisKonsekuensi ?? '-'} / riwayat ${counts.riwayatKonsekuensi ?? '-'}</span><br/><span class="text-xs text-green-600">Memuat ulang aplikasi...</span>`;
@@ -424,7 +424,7 @@ function refreshData(type) {
 }
 
 
-window.lihatBuktiAdmin = function(nisn) {
+window.lihatBuktiAdmin = function (nisn) {
     const url = window.adminBuktiCache && window.adminBuktiCache[nisn];
     if (url) {
         Swal.fire({
@@ -441,4 +441,123 @@ window.lihatBuktiAdmin = function(nisn) {
     } else {
         showAlert('error', 'Bukti tidak ditemukan.');
     }
+};window.showExcelPreviewModal = function(title, subtitle, headers, dataRows, callbackDownload) {
+    let theadHtml = '';
+    if (Array.isArray(headers[0])) {
+        headers.forEach(row => {
+            theadHtml += '<tr>';
+            row.forEach(h => {
+                theadHtml += `<th class="border border-gray-400 p-2 bg-gray-200 text-center text-xs whitespace-nowrap">${h}</th>`;
+            });
+            theadHtml += '</tr>';
+        });
+    } else {
+        theadHtml = '<tr>';
+        headers.forEach(h => {
+            theadHtml += `<th class="border border-gray-400 p-2 bg-gray-200 text-center text-xs whitespace-nowrap">${h}</th>`;
+        });
+        theadHtml += '</tr>';
+    }
+
+    let tbodyHtml = '';
+    dataRows.forEach(row => {
+        tbodyHtml += '<tr>';
+        row.forEach((cell, i) => {
+            let align = (i === 0 || i > 3) ? 'text-center' : 'text-left';
+            if (typeof cell === 'number') align = 'text-center';
+            tbodyHtml += `<td class="border border-gray-300 p-2 text-xs ${align} whitespace-nowrap">${cell !== null && cell !== undefined ? cell : ''}</td>`;
+        });
+        tbodyHtml += '</tr>';
+    });
+
+    const htmlContent = `
+        <div class="flex flex-col h-[75vh]">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 bg-gray-50 p-2 rounded-lg">
+                <div class="flex gap-2">
+                    <button id="btnZoomIn" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-plus text-gray-500 mr-1"></i> Zoom In</button>
+                    <button id="btnZoomOut" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-minus text-gray-500 mr-1"></i> Zoom Out</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btnPrintPreview" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas fa-print mr-1"></i> Print</button>
+                    <button id="btnDownloadPreview" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas fa-file-excel mr-1"></i> Unduh Excel</button>
+                </div>
+            </div>
+            
+            <div id="previewTableContainer" class="flex-1 overflow-auto border border-gray-300 bg-white shadow-inner relative" style="zoom: 1;">
+                <div id="printArea" class="p-6 bg-white min-w-max inline-block">
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800 m-0 uppercase tracking-wide">${title}</h2>
+                        ${subtitle ? `<p class="text-sm font-semibold text-gray-600 mt-2 uppercase tracking-wide">${subtitle}</p>` : ''}
+                    </div>
+                    <table class="border-collapse text-gray-800 bg-white" style="table-layout: auto;">
+                        <thead>${theadHtml}</thead>
+                        <tbody>${tbodyHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+
+    Swal.fire({
+        title: 'Pratinjau Laporan',
+        html: htmlContent,
+        width: '95vw',
+        showConfirmButton: false,
+        showCloseButton: true,
+        customClass: {
+            popup: 'rounded-xl shadow-2xl',
+            title: 'text-left text-lg font-bold text-gray-800 border-b pb-3 m-0 pl-2'
+        },
+        didOpen: () => {
+            let currentZoom = 1;
+            const container = document.getElementById('previewTableContainer');
+            
+            document.getElementById('btnZoomIn').addEventListener('click', () => {
+                if(currentZoom < 2.0) currentZoom += 0.1;
+                container.style.zoom = currentZoom;
+            });
+            document.getElementById('btnZoomOut').addEventListener('click', () => {
+                if (currentZoom > 0.4) currentZoom -= 0.1;
+                container.style.zoom = currentZoom;
+            });
+            
+            document.getElementById('btnPrintPreview').addEventListener('click', () => {
+                const printContents = document.getElementById('printArea').innerHTML;
+                const printWindow = window.open('', '', 'height=600,width=800');
+                printWindow.document.write('<html><head><title>Print Preview</title>');
+                printWindow.document.write(`
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+                        body { font-family: 'Inter', Arial, sans-serif; padding: 20px; background: white; }
+                        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top:20px; color: #1f2937; }
+                        th, td { border: 1px solid #4b5563; padding: 6px 8px; }
+                        th { background-color: #f3f4f6; text-align: center; font-weight: 700; text-transform: uppercase; }
+                        td { text-align: left; }
+                        td.text-center { text-align: center; }
+                        h2 { text-align: center; margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase; color: #111827; }
+                        p { text-align: center; margin: 6px 0 10px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #4b5563; }
+                        @media print {
+                            @page { margin: 10mm; size: landscape; }
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
+                    </style>
+                `);
+                printWindow.document.write('</head><body>');
+                printWindow.document.write(printContents);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 800);
+            });
+
+            document.getElementById('btnDownloadPreview').addEventListener('click', () => {
+                Swal.close();
+                if (callbackDownload) callbackDownload();
+            });
+        }
+    });
 };
