@@ -108,9 +108,18 @@ async function loadMonitoringAbsensi(forceDate = false) {
             }
         }
 
-        tableState.monitoring.fullData = useData;
+        let sortedData = useData.sort((a, b) => {
+            let kelasA = String(a.kelas || '').toUpperCase();
+            let kelasB = String(b.kelas || '').toUpperCase();
+            if (kelasA !== kelasB) return kelasA.localeCompare(kelasB, undefined, {numeric: true});
+            
+            let namaA = String(a.nama || '').toUpperCase();
+            let namaB = String(b.nama || '').toUpperCase();
+            return namaA.localeCompare(namaB);
+        });
+        
+        tableState.monitoring.fullData = sortedData;
         processTableData('monitoring');
-
     } catch (e) {
         tableState.monitoring.fullData = [];
         const tbodyError = document.getElementById('tbody-monitoring');
