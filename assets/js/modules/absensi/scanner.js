@@ -76,29 +76,46 @@ async function onScanSuccess(decodedText) {
         const min = String(now.getMinutes()).padStart(2, '0');
         const ss = String(now.getSeconds()).padStart(2, '0');
 
-        // --- MENGGUNAKAN API GOOGLE APPS SCRIPT ---
-        const result = await fetchAPI('scanAbsensi', {
+        // --- [TRIS OPTIMISTIC UI] CARI DATA SISWA DI CACHE LOKAL DULU ---
+        let namaSiswa = "Siswa";
+        let kelasSiswa = "";
+        try {
+            const cachedSiswa = JSON.parse(localStorage.getItem('cache_data_siswa_master') || '[]');
+            const siswaFound = cachedSiswa.find(s => String(s.nisn).trim() === String(decodedText).trim());
+            if (siswaFound) {
+                namaSiswa = siswaFound.nama;
+                kelasSiswa = siswaFound.kelas;
+            }
+        } catch(e) {}
+
+        // TAMPILKAN LANGSUNG SUKSES (INSTAN 0.1 DETIK)
+        const scanType = (hh < 11) ? 'Presensi Masuk' : 'Presensi Pulang';
+        const scanTime = `${hh}:${min}:${ss}`;
+        const color = (hh < 11) ? 'green' : 'blue';
+        
+        resultDiv.innerHTML = `<div class="bg-${color}-50 text-${color}-900 p-6 rounded-2xl border border-${color}-100 shadow-md animate-fade-in relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10"><i class="fas fa-check-circle text-6xl"></i></div><h3 class="font-bold text-xl uppercase mb-1 tracking-tight">${namaSiswa}</h3><p class="text-sm font-semibold opacity-70 mb-4">${kelasSiswa}</p><div class="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-${color}-200 inline-block text-center min-w-[180px]"><div class="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">${scanType}</div><div class="text-sm font-bold uppercase opacity-80 mb-2">Berhasil</div><div class="text-3xl font-mono font-bold">${scanTime}</div></div><p class="text-xs mt-4 font-bold uppercase tracking-wide opacity-50 animate-pulse">Siap untuk siswa berikutnya...</p></div>`;
+        
+        // Lepas kunci scanner agar bisa scan orang lain secepat kilat
+        setTimeout(() => { isScanning = false; }, 2000);
+
+        // --- KIRIM KE BACKGROUND TANPA AWAIT (FIRE AND FORGET) ---
+        fetchAPI('scanAbsensi', {
             nisn: decodedText,
             role: myRole,
             kelasGuru: myKelas,
             token: currentUser ? currentUser.token : null,
             clientDate: `${yyyy}-${mm}-${dd}`,
             clientTime: `${hh}:${min}:${ss}`
-        });
+        }).then(result => {
+            if (!result.success) {
+                console.warn("Background absen gagal untuk:", decodedText, result.message);
+                // Jika ingin, bisa munculkan toast error diam-diam disini
+            }
+        }).catch(err => console.error("Error background absen:", err));
 
-        if (result.success) {
-            const color = result.type === 'datang' ? 'green' : 'blue';
-            const scanType = result.type === 'datang' ? 'Presensi Masuk' : 'Presensi Pulang';
-            const scanTime = result.type === 'datang' ? (result.jamDatang || result.waktu || '-') : (result.jamPulang || result.waktu || '-');
-            resultDiv.innerHTML = `<div class="bg-${color}-50 text-${color}-900 p-6 rounded-2xl border border-${color}-100 shadow-md animate-fade-in relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10"><i class="fas fa-check-circle text-6xl"></i></div><h3 class="font-bold text-xl uppercase mb-1 tracking-tight">${result.nama || "Siswa"}</h3><p class="text-sm font-semibold opacity-70 mb-4">${result.kelas || ""}</p><div class="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-${color}-200 inline-block text-center min-w-[180px]"><div class="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">${scanType}</div><div class="text-sm font-bold uppercase opacity-80 mb-2">Berhasil</div><div class="text-3xl font-mono font-bold">${scanTime}</div></div><p class="text-xs mt-4 font-bold uppercase tracking-wide opacity-50 animate-pulse">Siap untuk siswa berikutnya...</p></div>`;
-            setTimeout(() => { isScanning = false; }, 3000);
-        } else {
-            resultDiv.innerHTML = `<div class="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 shadow-sm flex items-center space-x-4"><div class="bg-red-100 p-3 rounded-full"><i class="fas fa-times text-xl"></i></div><div class="text-left"><h4 class="font-bold">Gagal!</h4><p class="text-sm opacity-90">${result.message}</p></div></div>`;
-            setTimeout(() => { isScanning = false; }, 4000);
-        }
     } catch (err) {
-        resultDiv.innerHTML = `<div class="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 shadow-sm flex items-center space-x-4"><div class="bg-red-100 p-3 rounded-full"><i class="fas fa-times text-xl"></i></div><div class="text-left"><h4 class="font-bold">Error Koneksi!</h4><p class="text-sm opacity-90">Gagal terhubung ke server.</p></div></div>`;
-        setTimeout(() => { isScanning = false; }, 4000);
+        resultDiv.innerHTML = `<div class="bg-red-50 text-red-700 p-5 rounded-2xl border border-red-100 shadow-sm flex items-center space-x-4"><div class="bg-red-100 p-3 rounded-full"><i class="fas fa-times text-xl"></i></div><div class="text-left"><h4 class="font-bold">Error!</h4><p class="text-sm opacity-90">Terjadi kesalahan sistem.</p></div></div>`;
+        setTimeout(() => { isScanning = false; }, 3000);
     }
 }
 
