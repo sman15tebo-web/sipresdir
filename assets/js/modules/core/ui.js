@@ -443,18 +443,25 @@ window.lihatBuktiAdmin = function (nisn) {
     }
 };window.showExcelPreviewModal = function(title, subtitle, headers, dataRows, callbackDownload) {
     let theadHtml = '';
+    
+    function getHeaderClass(h, isLast) {
+        let name = String(h).toLowerCase();
+        let isKet = name.includes('keterangan') || name.includes('catatan') || isLast;
+        return isKet ? 'border border-gray-400 p-2 bg-gray-200 text-center text-xs whitespace-normal break-words w-[250px] max-w-[250px]' : 'border border-gray-400 p-2 bg-gray-200 text-center text-xs whitespace-nowrap w-auto';
+    }
+
     if (Array.isArray(headers[0])) {
         headers.forEach(row => {
             theadHtml += '<tr>';
-            row.forEach(h => {
-                theadHtml += `<th class="border border-gray-400 p-2 bg-gray-200 text-center text-xs whitespace-nowrap">${h}</th>`;
+            row.forEach((h, i) => {
+                theadHtml += `<th class="${getHeaderClass(h, i === row.length - 1)}">${h}</th>`;
             });
             theadHtml += '</tr>';
         });
     } else {
         theadHtml = '<tr>';
-        headers.forEach(h => {
-            theadHtml += `<th class="border border-gray-400 p-2 bg-gray-200 text-center text-xs whitespace-nowrap">${h}</th>`;
+        headers.forEach((h, i) => {
+            theadHtml += `<th class="${getHeaderClass(h, i === headers.length - 1)}">${h}</th>`;
         });
         theadHtml += '</tr>';
     }
@@ -466,8 +473,16 @@ window.lihatBuktiAdmin = function (nisn) {
             let align = (i === 0 || i > 3) ? 'text-center' : 'text-left';
             if (typeof cell === 'number') align = 'text-center';
             
-            // Allow wrapping for the last column (usually Keterangan/Catatan) to avoid it being too wide
-            let wrapClass = (i === row.length - 1) ? 'whitespace-normal min-w-[200px] max-w-[300px] break-words' : 'whitespace-nowrap';
+            // Allow wrapping for Keterangan/Catatan or the last column
+            let headerName = '';
+            if (Array.isArray(headers[0])) {
+                headerName = String(headers[headers.length-1][i]).toLowerCase();
+            } else {
+                headerName = String(headers[i]).toLowerCase();
+            }
+            
+            let isKeterangan = headerName.includes('keterangan') || headerName.includes('catatan') || (i === row.length - 1);
+            let wrapClass = isKeterangan ? 'whitespace-normal w-[250px] max-w-[250px] break-words' : 'whitespace-nowrap w-auto';
             
             tbodyHtml += `<td class="border border-gray-300 p-2 text-xs ${align} ${wrapClass}">${cell !== null && cell !== undefined ? cell : ''}</td>`;
         });
@@ -580,8 +595,8 @@ window.showDocumentPreviewModal = function(title, subtitle, htmlContent, callbac
                 </div>
             </div>
             
-            <div id="previewDocContainer" class="flex-1 overflow-auto border border-gray-300 bg-gray-200 shadow-inner relative flex justify-center p-4">
-                <div id="docPrintArea" class="bg-white shadow-md" style="width: 210mm; min-height: 297mm; padding: 20mm; transform-origin: top center; zoom: 1;">
+            <div id="previewDocContainer" class="flex-1 overflow-auto border border-gray-300 bg-gray-200 shadow-inner relative flex justify-center p-4 items-start">
+                <div id="docPrintArea" class="bg-white shadow-md" style="width: 210mm; min-height: 297mm; height: max-content; padding: 20mm; transform-origin: top center; zoom: 1;">
                     ${htmlContent}
                 </div>
             </div>
