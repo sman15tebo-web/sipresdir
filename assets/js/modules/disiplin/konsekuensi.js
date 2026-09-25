@@ -335,10 +335,13 @@ function cetakKonsekuensi(idx) {
             h3 { margin: 0 0 15px 0; font-size: 14px; font-weight: normal; }
             .info { margin-bottom: 10px; }
             .info div { margin-bottom: 3px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
             th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
             th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
-            .keterangan-box { border: 1px solid #000; padding: 10px 15px; }
+            .keterangan-box { border: 1px solid #000; padding: 10px 15px; page-break-inside: avoid; }
             .keterangan-title { font-weight: bold; margin-bottom: 8px; display: inline-block; }
             .checkbox-item { margin-bottom: 5px; display: inline-flex; align-items: center; margin-right: 20px; }
             .box { width: 12px; height: 12px; border: 1px solid #000; display: inline-block; margin-right: 6px; }
