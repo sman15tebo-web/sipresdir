@@ -223,19 +223,19 @@ async function exportExcelKasus() {
             return [i + 1, d.nisn, d.nama, d.kelas, d.kasus, d.totalPoin];
         });
 
-        if (typeof showExcelPreviewModal === 'function') {
-            showExcelPreviewModal(
-                'REKAPITULASI PELANGGARAN SISWA', 
-                '', 
-                headers, 
-                dataRows, 
-                async () => {
-                    await doActualExportKasus();
-                }
-            );
-        } else {
-            await doActualExportKasus();
+        if (typeof showExcelPreviewModal !== 'function') {
+            showAlert('error', 'Fitur pratinjau belum siap. Silakan tunggu sebentar lalu coba lagi.');
+            return;
         }
+        showExcelPreviewModal(
+            'REKAPITULASI PELANGGARAN SISWA', 
+            '', 
+            headers, 
+            dataRows, 
+            async () => {
+                await doActualExportKasus();
+            }
+        );
 
     } catch (err) {
         console.error(err);
@@ -441,37 +441,29 @@ function cetakPDFDetailKasus() {
         </div>
     `;
 
-    if (typeof showDocumentPreviewModal === 'function') {
-        showDocumentPreviewModal(
-            'Pratinjau PDF', 
-            '', 
-            htmlContent, 
-            null, // No print button for PDF
-            () => {
-                showLoading();
-                if (typeof html2pdf === 'undefined') {
-                    const script = document.createElement('script');
-                    script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-                    script.onload = () => executePDFDownload();
-                    document.head.appendChild(script);
-                } else {
-                    executePDFDownload();
-                }
-            },
-            'Unduh PDF',
-            'fa-file-pdf'
-        );
-    } else {
-        showLoading();
-        if (typeof html2pdf === 'undefined') {
-            const script = document.createElement('script');
-            script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
-            script.onload = () => executePDFDownload();
-            document.head.appendChild(script);
-        } else {
-            executePDFDownload();
-        }
+    if (typeof showDocumentPreviewModal !== 'function') {
+        showAlert('error', 'Fitur pratinjau belum siap. Silakan tunggu sebentar lalu coba lagi.');
+        return;
     }
+    showDocumentPreviewModal(
+        'Pratinjau PDF', 
+        '', 
+        htmlContent, 
+        null,
+        () => {
+            showLoading();
+            if (typeof html2pdf === 'undefined') {
+                const script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+                script.onload = () => executePDFDownload();
+                document.head.appendChild(script);
+            } else {
+                executePDFDownload();
+            }
+        },
+        'Unduh PDF',
+        'fa-file-pdf'
+    );
 }
 
 function executePDFDownload() {
