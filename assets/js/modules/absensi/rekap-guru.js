@@ -207,17 +207,17 @@ async function exportToExcel() {
             row.status
         ]);
 
-        if (typeof showExcelPreviewModal === 'function') {
+        if (typeof showExcelPreviewModal !== 'function') {
             btn.disabled = false;
             btn.innerHTML = originalText;
-            showExcelPreviewModal('REKAPITULASI ABSENSI SISWA', '', headers, dataRows, async () => {
-                await doActualExportExcelAbsensi(data);
-            });
-        } else {
-            await doActualExportExcelAbsensi(data);
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            showAlert('error', 'Fitur pratinjau belum siap. Silakan tunggu sebentar lalu coba lagi.');
+            return;
         }
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        showExcelPreviewModal('REKAPITULASI ABSENSI SISWA', '', headers, dataRows, async () => {
+            await doActualExportExcelAbsensi(data);
+        });
 
     } catch (error) {
         showAlert('error', 'Gagal membuat pratinjau Excel.');
@@ -390,23 +390,23 @@ async function processMatrixExport(event) {
             dataRows.push(rowData);
         });
 
-        if (typeof showExcelPreviewModal === 'function') {
+        if (typeof showExcelPreviewModal !== 'function') {
             btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
             btn.disabled = false;
-            showExcelPreviewModal(
-                'REKAPITULASI JURNAL KEHADIRAN BULANAN SISWA', 
-                `PERIODE: ${namaBulan.toUpperCase()} ${tahun} | KELAS: ${kelas ? kelas.toUpperCase() : 'SEMUA KELAS'}`, 
-                [topHeader, bottomHeader], 
-                dataRows, 
-                async () => {
-                    await doActualExportMatrix(data, bulan, tahun, kelas, namaBulan, safeDays);
-                }
-            );
-        } else {
-            await doActualExportMatrix(data, bulan, tahun, kelas, namaBulan, safeDays);
-            btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
-            btn.disabled = false;
+            showAlert('error', 'Fitur pratinjau belum siap. Silakan tunggu sebentar lalu coba lagi.');
+            return;
         }
+        btn.innerHTML = '<i class="fas fa-file-excel"></i> Download Excel';
+        btn.disabled = false;
+        showExcelPreviewModal(
+            'REKAPITULASI JURNAL KEHADIRAN BULANAN SISWA', 
+            `PERIODE: ${namaBulan.toUpperCase()} ${tahun} | KELAS: ${kelas ? kelas.toUpperCase() : 'SEMUA KELAS'}`, 
+            [topHeader, bottomHeader], 
+            dataRows, 
+            async () => {
+                await doActualExportMatrix(data, bulan, tahun, kelas, namaBulan, safeDays);
+            }
+        );
 
     } catch (err) {
         closeModal();
@@ -559,21 +559,21 @@ async function processDailyExportCustom(btnElement) {
 
         const formattedDate = new Date(tglDipilih).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-        if (typeof showExcelPreviewModal === 'function') {
+        if (typeof showExcelPreviewModal !== 'function') {
             btnElement.innerHTML = originalText; btnElement.disabled = false;
-            showExcelPreviewModal(
-                'LAPORAN ABSENSI HARIAN SISWA', 
-                `TANGGAL: ${formattedDate.toUpperCase()} | KELAS: ${filterKelas ? filterKelas.toUpperCase() : 'SEMUA KELAS'}`, 
-                headers, 
-                dataRows, 
-                async () => {
-                    await doActualExportDaily(data, tglDipilih, filterKelas, formattedDate);
-                }
-            );
-        } else {
-            await doActualExportDaily(data, tglDipilih, filterKelas, formattedDate);
-            btnElement.innerHTML = originalText; btnElement.disabled = false;
+            showAlert('error', 'Fitur pratinjau belum siap. Silakan tunggu sebentar lalu coba lagi.');
+            return;
         }
+        btnElement.innerHTML = originalText; btnElement.disabled = false;
+        showExcelPreviewModal(
+            'LAPORAN ABSENSI HARIAN SISWA', 
+            `TANGGAL: ${formattedDate.toUpperCase()} | KELAS: ${filterKelas ? filterKelas.toUpperCase() : 'SEMUA KELAS'}`, 
+            headers, 
+            dataRows, 
+            async () => {
+                await doActualExportDaily(data, tglDipilih, filterKelas, formattedDate);
+            }
+        );
 
     } catch (err) {
         btnElement.innerHTML = originalText; btnElement.disabled = false;
