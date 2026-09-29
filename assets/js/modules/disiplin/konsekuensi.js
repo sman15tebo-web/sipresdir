@@ -382,36 +382,28 @@ function cetakKonsekuensi(idx) {
         </div>
     </div>`;
     
-    if (typeof showDocumentPreviewModal === 'function') {
-        showDocumentPreviewModal(
-            'Pratinjau Cetak Konsekuensi',
-            '',
-            html,
-            () => { // callbackPrint
-                const printWindow = window.open('', '_blank', 'width=800,height=600');
-                printWindow.document.write('<html><head><title>Cetak Konsekuensi</title></head><body style="margin:0; padding:20px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">');
-                printWindow.document.write(html);
-                printWindow.document.write('</body></html>');
-                printWindow.document.close();
-                printWindow.focus();
-                setTimeout(() => {
-                    printWindow.print();
-                    printWindow.close();
-                }, 500);
-            },
-            null // callbackDownload
-        );
-    } else {
-        const win = window.open('', '_blank', 'width=800,height=600');
-        win.document.write('<html><head><title>Cetak Konsekuensi</title></head><body style="margin:0; padding:20px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">');
-        win.document.write(html);
-        win.document.write('</body></html>');
-        win.document.close();
-        win.focus();
-        setTimeout(() => {
-            win.print();
-        }, 500);
+    if (typeof showDocumentPreviewModal !== 'function') {
+        showAlert('error', 'Fitur pratinjau belum siap. Silakan tunggu sebentar lalu coba lagi.');
+        return;
     }
+    showDocumentPreviewModal(
+        'Pratinjau Cetak Konsekuensi',
+        '',
+        html,
+        () => { // callbackPrint
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            printWindow.document.write('<html><head><title>Cetak Konsekuensi</title></head><body style="margin:0; padding:20px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">');
+            printWindow.document.write(html);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+        },
+        null // callbackDownload
+    );
 }
 
 async function loadHalamanKonsekuensi() { 
