@@ -1,7 +1,7 @@
 // ============================================================
 // KONFIGURASI API & CORE STATE
 // ============================================================
-const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbxIHVgcXe0PWVx0qpmR0g6yXBmjhiw2ZoVNV5nJ9xuvqScIRal_ma_wCavNnd88FexW/exec';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbyQcXoqZ-KoA6Bh_FnA1vxr3pxHBhRDIw95Z2ncEMjVSmx740iM35gvpx4E1qQQIrPy/exec';
 
 // Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
 const TENANT_CONFIG = {
