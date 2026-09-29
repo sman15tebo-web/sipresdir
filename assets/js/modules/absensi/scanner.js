@@ -86,15 +86,15 @@ async function onScanSuccess(decodedText) {
                 namaSiswa = siswaFound.nama;
                 kelasSiswa = siswaFound.kelas;
             }
-        } catch(e) {}
+        } catch (e) { }
 
         // TAMPILKAN LANGSUNG SUKSES (INSTAN 0.1 DETIK)
-        const scanType = (hh < 11) ? 'Presensi Masuk' : 'Presensi Pulang';
+        const scanType = (parseInt(hh) < 12) ? 'Presensi Masuk' : 'Presensi Pulang';
         const scanTime = `${hh}:${min}:${ss}`;
-        const color = (hh < 11) ? 'green' : 'blue';
-        
+        const color = (parseInt(hh) < 12) ? 'green' : 'blue';
+
         resultDiv.innerHTML = `<div class="bg-${color}-50 text-${color}-900 p-6 rounded-2xl border border-${color}-100 shadow-md animate-fade-in relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10"><i class="fas fa-check-circle text-6xl"></i></div><h3 class="font-bold text-xl uppercase mb-1 tracking-tight">${namaSiswa}</h3><p class="text-sm font-semibold opacity-70 mb-4">${kelasSiswa}</p><div class="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-${color}-200 inline-block text-center min-w-[180px]"><div class="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">${scanType}</div><div class="text-sm font-bold uppercase opacity-80 mb-2">Berhasil</div><div class="text-3xl font-mono font-bold">${scanTime}</div></div><p class="text-xs mt-4 font-bold uppercase tracking-wide opacity-50 animate-pulse">Siap untuk siswa berikutnya...</p></div>`;
-        
+
         // Lepas kunci scanner agar bisa scan orang lain secepat kilat
         setTimeout(() => { isScanning = false; }, 2000);
 
@@ -169,4 +169,3 @@ function returnToDashboard() {
     else if (currentUser.role === 'guru') loadGuruDashboard();
     else loadSiswaDashboard();
 }
-
