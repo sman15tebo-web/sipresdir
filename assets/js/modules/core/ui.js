@@ -490,21 +490,23 @@ window.lihatBuktiAdmin = function (nisn) {
     });
 
     const htmlContent = `
-        <div class="flex flex-col h-[75vh]">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 bg-gray-50 p-2 rounded-lg">
-                <div class="flex gap-2">
-                    <button id="btnZoomIn" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-plus text-gray-500 mr-1"></i> Zoom In</button>
-                    <button id="btnZoomOut" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-minus text-gray-500 mr-1"></i> Zoom Out</button>
-                </div>
-                <div class="flex gap-2">
-                    <button id="btnPrintPreview" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas fa-print mr-1"></i> Print</button>
-                    <button id="btnDownloadPreview" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas fa-file-excel mr-1"></i> Unduh Excel</button>
-                </div>
+        <div class="flex flex-col" style="height:75vh;">
+
+            <!-- TOOLBAR ATAS: zoom kecil kiri & kanan -->
+            <div class="flex justify-between items-center px-2 py-1.5 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+                <button id="btnZoomOut" class="flex items-center justify-center w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow border border-gray-300 transition-colors" title="Zoom Out">
+                    <i class="fas fa-search-minus text-gray-500 text-xs"></i>
+                </button>
+                <span id="lblZoomLevel" class="text-[10px] text-gray-400 font-mono">100%</span>
+                <button id="btnZoomIn" class="flex items-center justify-center w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow border border-gray-300 transition-colors" title="Zoom In">
+                    <i class="fas fa-search-plus text-gray-500 text-xs"></i>
+                </button>
             </div>
-            
-            <div id="previewTableContainer" class="flex-1 overflow-auto border border-gray-300 bg-white shadow-inner relative" style="zoom: 1;">
-                <div id="printArea" class="p-6 bg-white min-w-max inline-block">
-                    <div class="text-center mb-6">
+
+            <!-- AREA TABEL -->
+            <div id="previewTableContainer" class="flex-1 overflow-auto border-x border-gray-300 bg-white shadow-inner" style="zoom: 1;">
+                <div id="printArea" class="p-4 bg-white min-w-max inline-block">
+                    <div class="text-center mb-4">
                         <h2 class="text-xl font-bold text-gray-800 m-0 uppercase tracking-wide">${title}</h2>
                         ${subtitle ? `<p class="text-sm font-semibold text-gray-600 mt-2 uppercase tracking-wide">${subtitle}</p>` : ''}
                     </div>
@@ -513,6 +515,16 @@ window.lihatBuktiAdmin = function (nisn) {
                         <tbody>${tbodyHtml}</tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- FOOTER BAWAH: Print kiri, Unduh Excel kanan -->
+            <div class="flex gap-2 p-2 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+                <button id="btnPrintPreview" class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow transition-colors">
+                    <i class="fas fa-print"></i> Print
+                </button>
+                <button id="btnDownloadPreview" class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow transition-colors">
+                    <i class="fas fa-file-excel"></i> Unduh Excel
+                </button>
             </div>
         </div>
     `;
@@ -530,14 +542,17 @@ window.lihatBuktiAdmin = function (nisn) {
         didOpen: () => {
             let currentZoom = 1;
             const container = document.getElementById('previewTableContainer');
-            
+            const lblZoom  = document.getElementById('lblZoomLevel');
+
             document.getElementById('btnZoomIn').addEventListener('click', () => {
-                if(currentZoom < 2.0) currentZoom += 0.1;
+                if (currentZoom < 2.0) currentZoom = Math.round((currentZoom + 0.1) * 10) / 10;
                 container.style.zoom = currentZoom;
+                lblZoom.textContent = Math.round(currentZoom * 100) + '%';
             });
             document.getElementById('btnZoomOut').addEventListener('click', () => {
-                if (currentZoom > 0.4) currentZoom -= 0.1;
+                if (currentZoom > 0.4) currentZoom = Math.round((currentZoom - 0.1) * 10) / 10;
                 container.style.zoom = currentZoom;
+                lblZoom.textContent = Math.round(currentZoom * 100) + '%';
             });
             
             document.getElementById('btnPrintPreview').addEventListener('click', () => {
@@ -583,22 +598,30 @@ window.lihatBuktiAdmin = function (nisn) {
 
 window.showDocumentPreviewModal = function(title, subtitle, htmlContent, callbackPrint, callbackDownload, downloadText = 'Unduh', downloadIcon = 'fa-download') {
     const modalHtml = `
-        <div class="flex flex-col h-[75vh]">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-200 bg-gray-50 p-2 rounded-lg">
-                <div class="flex gap-2">
-                    <button id="btnZoomInDoc" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-plus text-gray-500 mr-1"></i> Zoom In</button>
-                    <button id="btnZoomOutDoc" class="px-3 py-1.5 bg-white hover:bg-gray-100 rounded-md text-sm text-gray-700 shadow-sm border border-gray-300 transition-colors"><i class="fas fa-search-minus text-gray-500 mr-1"></i> Zoom Out</button>
-                </div>
-                <div class="flex gap-2">
-                    ${callbackPrint ? `<button id="btnPrintDoc" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas fa-print mr-1"></i> Print</button>` : ''}
-                    ${callbackDownload ? `<button id="btnDownloadDoc" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-bold text-sm shadow-sm transition-colors"><i class="fas ${downloadIcon} mr-1"></i> ${downloadText}</button>` : ''}
-                </div>
+        <div class="flex flex-col" style="height:75vh;">
+
+            <!-- TOOLBAR ATAS: zoom kecil kiri & kanan -->
+            <div class="flex justify-between items-center px-2 py-1.5 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+                <button id="btnZoomOutDoc" class="flex items-center justify-center w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow border border-gray-300 transition-colors" title="Zoom Out">
+                    <i class="fas fa-search-minus text-gray-500 text-xs"></i>
+                </button>
+                <span id="lblZoomLevelDoc" class="text-[10px] text-gray-400 font-mono">100%</span>
+                <button id="btnZoomInDoc" class="flex items-center justify-center w-8 h-8 bg-white hover:bg-gray-100 rounded-full shadow border border-gray-300 transition-colors" title="Zoom In">
+                    <i class="fas fa-search-plus text-gray-500 text-xs"></i>
+                </button>
             </div>
-            
-            <div id="previewDocContainer" class="flex-1 overflow-auto border border-gray-300 bg-gray-200 shadow-inner relative flex justify-center p-4 items-start">
+
+            <!-- AREA DOKUMEN -->
+            <div id="previewDocContainer" class="flex-1 overflow-auto border-x border-gray-300 bg-gray-200 shadow-inner flex justify-center p-4 items-start">
                 <div id="docPrintArea" class="bg-white shadow-md" style="width: 210mm; min-height: 297mm; height: max-content; padding: 20mm; transform-origin: top center; zoom: 1;">
                     ${htmlContent}
                 </div>
+            </div>
+
+            <!-- FOOTER BAWAH: Print kiri, Unduh kanan -->
+            <div class="flex gap-2 p-2 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+                ${callbackPrint ? `<button id="btnPrintDoc" class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow transition-colors"><i class="fas fa-print"></i> Print</button>` : '<div class="flex-1"></div>'}
+                ${callbackDownload ? `<button id="btnDownloadDoc" class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow transition-colors"><i class="fas ${downloadIcon}"></i> ${downloadText}</button>` : '<div class="flex-1"></div>'}
             </div>
         </div>
     `;
@@ -616,14 +639,17 @@ window.showDocumentPreviewModal = function(title, subtitle, htmlContent, callbac
         didOpen: () => {
             let currentZoom = 1;
             const container = document.getElementById('docPrintArea');
-            
+            const lblZoomDoc = document.getElementById('lblZoomLevelDoc');
+
             document.getElementById('btnZoomInDoc').addEventListener('click', () => {
-                if(currentZoom < 2.0) currentZoom += 0.1;
+                if (currentZoom < 2.0) currentZoom = Math.round((currentZoom + 0.1) * 10) / 10;
                 container.style.zoom = currentZoom;
+                lblZoomDoc.textContent = Math.round(currentZoom * 100) + '%';
             });
             document.getElementById('btnZoomOutDoc').addEventListener('click', () => {
-                if (currentZoom > 0.4) currentZoom -= 0.1;
+                if (currentZoom > 0.4) currentZoom = Math.round((currentZoom - 0.1) * 10) / 10;
                 container.style.zoom = currentZoom;
+                lblZoomDoc.textContent = Math.round(currentZoom * 100) + '%';
             });
             
             if (callbackPrint) {
