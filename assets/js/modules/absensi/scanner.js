@@ -7,8 +7,10 @@ let siswaManual = [];
 let rekomendasiSiswaManual = [];
 let siswaTerpilihManual = null;
 let attendanceScheduleVerified = false;
+let scannerActivationId = 0;
 
 async function loadScanAbsensi() {
+    const activationId = ++scannerActivationId;
     stopAndBack(false);
     isScanning = false;
     attendanceScheduleVerified = false;
@@ -39,6 +41,8 @@ async function loadScanAbsensi() {
             if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
         }
     }
+
+    if (activationId !== scannerActivationId || viewIdGlobal !== 'view-scanner') return;
 
     if (lastError) {
         window.appStatusHari = null;
@@ -72,8 +76,12 @@ async function loadScanAbsensi() {
 
     attendanceScheduleVerified = true;
     setScannerControlsEnabled(true);
-    muatSiswaManual();
-    setTimeout(() => { startCamera('environment'); }, 500);
+    void muatSiswaManual();
+    setTimeout(() => {
+        if (activationId === scannerActivationId && viewIdGlobal === 'view-scanner') {
+            startCamera('environment');
+        }
+    }, 500);
 }
 
 function setScannerControlsEnabled(enabled) {
