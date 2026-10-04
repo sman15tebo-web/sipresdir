@@ -6,39 +6,82 @@ let isScanning = false;
 let siswaManual = [];
 let rekomendasiSiswaManual = [];
 let siswaTerpilihManual = null;
+let attendanceScheduleVerified = false;
 
 async function loadScanAbsensi() {
-    try {
-        const statusHari = await fetchAPI('cekWFHToday');
-        if (!statusHari || statusHari.success === false || typeof statusHari.isLibur !== 'boolean') {
-            throw new Error(statusHari?.message || 'Status hari libur tidak dapat dipastikan.');
-        }
-        window.appStatusHari = statusHari;
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Jadwal Tidak Tersedia',
-            text: 'Tidak dapat memastikan status hari libur. Scanner tidak dibuka. ' + (error.message || ''),
-            confirmButtonColor: '#4f46e5'
-        });
-        return;
-    }
-    if (window.appStatusHari.isLibur) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Hari Libur',
-            text: 'Saat ini adalah hari libur (' + window.appStatusHari.keterangan + '). Anda tidak dapat merekam presensi.',
-            confirmButtonColor: '#4f46e5'
-        });
-        return;
-    }
-
+    stopAndBack(false);
     isScanning = false;
+    attendanceScheduleVerified = false;
+    setScannerControlsEnabled(false);
     setActiveMenu('Kelola Presensi');
     await showView('view-scanner');
     resetPilihanSiswaManual();
+    const camLoading = document.getElementById('camLoading');
+    if (camLoading) camLoading.classList.add('hidden');
+    const qrResult = document.getElementById('scanResultQr');
+    if (qrResult) {
+        qrResult.classList.add('hidden');
+        qrResult.innerHTML = '';
+    }
+
+    let statusHari = null;
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            statusHari = await fetchAPI('cekWFHToday');
+            if (!statusHari || statusHari.success === false || typeof statusHari.isLibur !== 'boolean') {
+                throw new Error(statusHari?.message || 'Server mengirim status jadwal yang tidak valid.');
+            }
+            lastError = null;
+            break;
+        } catch (error) {
+            lastError = error;
+            if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        }
+    }
+
+    if (lastError) {
+        window.appStatusHari = null;
+        if (qrResult) {
+            qrResult.innerHTML = `
+                <div class="bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 font-bold text-sm">
+                    <div><i class="fas fa-wifi mr-2"></i>Jadwal belum dapat diverifikasi. Scan kamera dan rekam manual dikunci untuk mencegah presensi di hari libur.</div>
+                    <button type="button" onclick="loadScanAbsensi()" class="mt-3 px-4 py-2 bg-amber-700 text-white rounded-lg font-bold">Coba Periksa Lagi</button>
+                </div>`;
+            qrResult.classList.remove('hidden');
+        }
+        Swal.fire({
+            icon: 'warning',
+            title: 'Jadwal Tidak Tersedia',
+            text: `Halaman Kelola Presensi tetap dibuka, tetapi scan dan rekam manual dikunci sampai jadwal berhasil diverifikasi. ${lastError.message || lastError}`,
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    window.appStatusHari = statusHari;
+    if (statusHari.isLibur) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Hari Libur',
+            text: 'Saat ini adalah hari libur (' + statusHari.keterangan + '). Anda tidak dapat merekam presensi.',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    attendanceScheduleVerified = true;
+    setScannerControlsEnabled(true);
     muatSiswaManual();
     setTimeout(() => { startCamera('environment'); }, 500);
+}
+
+function setScannerControlsEnabled(enabled) {
+    document.querySelectorAll('#view-scanner button[onclick^="startCamera"]').forEach(button => {
+        button.disabled = !enabled;
+    });
+    const manualButton = document.getElementById('btnRekamManual');
+    if (manualButton) manualButton.disabled = !enabled || !siswaTerpilihManual;
 }
 
 async function muatSiswaManual() {
@@ -172,6 +215,7 @@ async function rekamPresensiManual() {
 }
 
 function startCamera(mode) {
+    if (!attendanceScheduleVerified) return;
     if (html5QrCode) {
         html5QrCode.stop().then(() => {
             html5QrCode.clear();
@@ -209,6 +253,10 @@ async function onScanSuccess(decodedText) {
 }
 
 async function recordAttendance(nisn, source) {
+    if (!attendanceScheduleVerified) {
+        showAlert('warning', 'Jadwal belum berhasil diverifikasi. Scan dan rekam manual dikunci.');
+        return;
+    }
     if (!nisn || isScanning) return;
     if (isScanning) return;
     isScanning = true;
