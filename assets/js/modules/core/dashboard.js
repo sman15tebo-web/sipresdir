@@ -16,6 +16,102 @@ function animateValue(id, start, end, duration) {
 
 let adminViolationChartInstance = null;
 
+async function refreshStaffDashboard(cachePrefix) {
+    const cacheData = (key, data) => {
+        try {
+            localStorage.setItem(`cache_${cachePrefix}_${key}`, JSON.stringify(data));
+        } catch (error) {
+            console.warn(`Gagal menyimpan cache dashboard ${key}:`, error);
+        }
+    };
+
+    const renderRealtime = data => {
+        if (Array.isArray(data)) {
+            animateValue('admStatTotal', 0, data.length, 800);
+            animateValue('admStatHadir', 0, data.filter(item => item.status === 'Hadir').length, 800);
+            animateValue('admStatSakit', 0, data.filter(item => item.status === 'Sakit').length, 800);
+            animateValue('admStatIzin', 0, data.filter(item => item.status === 'Izin').length, 800);
+            animateValue('admStatAlpa', 0, data.filter(item => item.status === 'Alpa').length, 800);
+        } else if (data && typeof data === 'object') {
+            animateValue('admStatTotal', 0, data.totalSiswa || 0, 800);
+            animateValue('admStatHadir', 0, data.hadir || 0, 800);
+            animateValue('admStatSakit', 0, data.sakit || 0, 800);
+            animateValue('admStatIzin', 0, data.izin || 0, 800);
+            animateValue('admStatAlpa', 0, data.alpa || 0, 800);
+        } else {
+            throw new Error('Format data presensi dashboard tidak valid.');
+        }
+    };
+    const renderAdvanced = data => {
+        const renderers = [
+            ['grafik kehadiran', () => renderAdminAttendanceLineChart(data?.attendanceTrend)],
+            ['grafik pelanggaran', () => renderAdminViolationPieChart(data?.violationPie)],
+            ['peringkat kelas', () => renderLeaderboardKelas(data?.topClasses)],
+            ['peringkat siswa', () => renderLeaderboardSiswa(data?.topViolators)]
+        ];
+        renderers.forEach(([label, render]) => {
+            try {
+                render();
+            } catch (error) {
+                console.error(`Gagal menampilkan ${label} dashboard:`, error);
+            }
+        });
+    };
+
+    try {
+        const cachedRealtime = localStorage.getItem(`cache_${cachePrefix}_realtime`);
+        if (cachedRealtime) renderRealtime(JSON.parse(cachedRealtime));
+    } catch (error) {
+        console.warn('Gagal menampilkan cache ringkasan dashboard:', error);
+    }
+    try {
+        const cachedAdvanced = localStorage.getItem(`cache_${cachePrefix}_adv`);
+        if (cachedAdvanced) renderAdvanced(JSON.parse(cachedAdvanced));
+    } catch (error) {
+        console.warn('Gagal menampilkan cache grafik dashboard:', error);
+    }
+
+    const requests = await Promise.allSettled([
+        fetchAPI('getMonitoringRealtime', { filterKelas: null }),
+        fetchAPI('getDashboardAdvancedStats', { token: currentUser.token })
+    ]);
+    const failures = [];
+
+    const realtime = requests[0];
+    if (realtime.status === 'fulfilled' && realtime.value?.success) {
+        const data = realtime.value.data;
+        cacheData('realtime', data);
+        try {
+            renderRealtime(data);
+        } catch (error) {
+            console.error('Gagal menampilkan ringkasan presensi dashboard:', error);
+        }
+    } else {
+        const error = realtime.status === 'rejected'
+            ? realtime.reason
+            : new Error(realtime.value?.message || 'Server gagal mengirim ringkasan presensi.');
+        failures.push(`ringkasan presensi: ${error.message || error}`);
+        console.error('Dashboard getMonitoringRealtime gagal:', error);
+    }
+
+    const advanced = requests[1];
+    if (advanced.status === 'fulfilled' && advanced.value?.success) {
+        const data = advanced.value.data;
+        cacheData('adv', data);
+        renderAdvanced(data);
+    } else {
+        const error = advanced.status === 'rejected'
+            ? advanced.reason
+            : new Error(advanced.value?.message || 'Server gagal mengirim statistik lanjutan.');
+        failures.push(`grafik dan peringkat: ${error.message || error}`);
+        console.error('Dashboard getDashboardAdvancedStats gagal:', error);
+    }
+
+    if (failures.length) {
+        showAlert('warning', `Dashboard terbuka, tetapi sebagian data tidak berhasil diperbarui: ${failures.join('; ')}. Periksa koneksi lalu muat ulang.`);
+    }
+}
+
 async function loadAdminDashboard() {
     stopAndBack(false); setActiveMenu('Dashboard'); await showView('view-admin-dashboard');
     const adminDateDisplay = document.getElementById('adminDateDisplay');
@@ -25,71 +121,7 @@ async function loadAdminDashboard() {
     const dashboardHeading = document.querySelector('#view-admin-dashboard h2');
     if (dashboardHeading) dashboardHeading.textContent = 'Dashboard Admin';
 
-    try {
-        // [OPTIMASI KILAT] Tampilkan dari Cache dulu jika ada
-        const cachedRealtime = localStorage.getItem('cache_admin_realtime');
-        const cachedAdv = localStorage.getItem('cache_admin_adv');
-
-        if (cachedRealtime) {
-            try {
-                const data = JSON.parse(cachedRealtime);
-                animateValue("admStatTotal", 0, data.length, 800);
-                animateValue("admStatHadir", 0, data.filter(d => d.status === 'Hadir').length, 800);
-                animateValue("admStatSakit", 0, data.filter(d => d.status === 'Sakit').length, 800);
-                animateValue("admStatIzin", 0, data.filter(d => d.status === 'Izin').length, 800);
-                animateValue("admStatAlpa", 0, data.filter(d => d.status === 'Alpa').length, 800);
-            } catch (e) { }
-        }
-
-        if (cachedAdv) {
-            try {
-                const adv = JSON.parse(cachedAdv);
-                renderAdminAttendanceLineChart(adv.attendanceTrend);
-                renderAdminViolationPieChart(adv.violationPie);
-                renderLeaderboardKelas(adv.topClasses);
-                renderLeaderboardSiswa(adv.topViolators);
-            } catch (e) { }
-        }
-
-        // 1. Get Realtime Stats (Cards) - Background Fetch
-        const result = await fetchAPI('getMonitoringRealtime', { filterKelas: null });
-        if (result.success) {
-            localStorage.setItem('cache_admin_realtime', JSON.stringify(result.data));
-            if (!cachedRealtime || JSON.stringify(result.data) !== cachedRealtime) {
-                const data = result.data;
-                if (Array.isArray(data)) {
-                    animateValue("admStatTotal", 0, data.length, 800);
-                    animateValue("admStatHadir", 0, data.filter(d => d.status === 'Hadir').length, 800);
-                    animateValue("admStatSakit", 0, data.filter(d => d.status === 'Sakit').length, 800);
-                    animateValue("admStatIzin", 0, data.filter(d => d.status === 'Izin').length, 800);
-                    animateValue("admStatAlpa", 0, data.filter(d => d.status === 'Alpa').length, 800);
-                } else {
-                    animateValue("admStatTotal", 0, data.totalSiswa || 0, 800);
-                    animateValue("admStatHadir", 0, data.hadir || 0, 800);
-                    animateValue("admStatSakit", 0, data.sakit || 0, 800);
-                    animateValue("admStatIzin", 0, data.izin || 0, 800);
-                    animateValue("admStatAlpa", 0, data.alpa || 0, 800);
-                }
-            }
-        }
-
-        // 2. Get Advanced Stats (Charts & Leaderboards) - Background Fetch
-        const advRes = await fetchAPI('getDashboardAdvancedStats', { token: currentUser.token });
-        if (advRes.success) {
-            localStorage.setItem('cache_admin_adv', JSON.stringify(advRes.data));
-            if (!cachedAdv || JSON.stringify(advRes.data) !== cachedAdv) {
-                const adv = advRes.data;
-                renderAdminAttendanceLineChart(adv.attendanceTrend);
-                renderAdminViolationPieChart(adv.violationPie);
-                renderLeaderboardKelas(adv.topClasses);
-                renderLeaderboardSiswa(adv.topViolators);
-            }
-        }
-
-    } catch (e) {
-        console.error("Fetch Exception in loadAdminDashboard:", e);
-        showAlert('error', "Terjadi kesalahan koneksi saat memuat dashboard.");
-    }
+    await refreshStaffDashboard('admin');
 }
 
 function renderAdminAttendanceLineChart(historyData) {
@@ -372,59 +404,7 @@ async function loadGuruDashboard() {
         titleEl.textContent = `Dashboard Guru`;
     }
 
-    try {
-        // [OPTIMASI KILAT] Tampilkan dari Cache dulu jika ada
-        const cachedRealtime = localStorage.getItem('cache_guru_realtime');
-        const cachedAdv = localStorage.getItem('cache_guru_adv');
-
-        if (cachedRealtime) {
-            try {
-                const data = JSON.parse(cachedRealtime);
-                animateValue("admStatTotal", 0, data.length, 800);
-                animateValue("admStatHadir", 0, data.filter(d => d.status === 'Hadir').length, 800);
-                animateValue("admStatSakit", 0, data.filter(d => d.status === 'Sakit').length, 800);
-                animateValue("admStatIzin", 0, data.filter(d => d.status === 'Izin').length, 800);
-                animateValue("admStatAlpa", 0, data.filter(d => d.status === 'Alpa').length, 800);
-            } catch (e) { }
-        }
-
-        if (cachedAdv) {
-            try {
-                const adv = JSON.parse(cachedAdv);
-                renderAdminAttendanceLineChart(adv.attendanceTrend);
-                renderAdminViolationPieChart(adv.violationPie);
-                renderLeaderboardKelas(adv.topClasses);
-                renderLeaderboardSiswa(adv.topViolators);
-            } catch (e) { }
-        }
-
-        const result = await fetchAPI('getMonitoringRealtime', { filterKelas: null });
-        if (result.success) {
-            localStorage.setItem('cache_guru_realtime', JSON.stringify(result.data));
-            if (!cachedRealtime || JSON.stringify(result.data) !== cachedRealtime) {
-                const data = result.data;
-                animateValue("admStatTotal", 0, data.length, 800);
-                animateValue("admStatHadir", 0, data.filter(d => d.status === 'Hadir').length, 800);
-                animateValue("admStatSakit", 0, data.filter(d => d.status === 'Sakit').length, 800);
-                animateValue("admStatIzin", 0, data.filter(d => d.status === 'Izin').length, 800);
-                animateValue("admStatAlpa", 0, data.filter(d => d.status === 'Alpa').length, 800);
-            }
-        }
-
-        const advRes = await fetchAPI('getDashboardAdvancedStats', { token: currentUser.token });
-        if (advRes.success) {
-            localStorage.setItem('cache_guru_adv', JSON.stringify(advRes.data));
-            if (!cachedAdv || JSON.stringify(advRes.data) !== cachedAdv) {
-                const adv = advRes.data;
-                renderAdminAttendanceLineChart(adv.attendanceTrend);
-                renderAdminViolationPieChart(adv.violationPie);
-                renderLeaderboardKelas(adv.topClasses);
-                renderLeaderboardSiswa(adv.topViolators);
-            }
-        }
-    } catch (e) {
-        console.error(e);
-    }
+    await refreshStaffDashboard('guru');
 }
 
 function renderGuruChart(hadir, sakit, izin, alpa, belumAbsen) {
@@ -582,4 +562,3 @@ async function submitUbahPasswordGuru(e) {
         showAlert('error', 'Koneksi error: ' + err);
     }
 }
-
