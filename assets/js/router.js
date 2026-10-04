@@ -3,6 +3,8 @@
 // ============================================================
 
 const viewCache = {};
+const viewLoadPromises = {};
+let viewNavigationRequestId = 0;
 
 function normalizeViewHTML(viewId, html) {
     const template = document.createElement('template');
@@ -27,74 +29,89 @@ async function loadHTML(viewId) {
     if (viewCache[viewId]) {
         return viewCache[viewId];
     }
-    
-    try {
-        let html = '';
-        // Cek jika berjalan di aplikasi Desktop (Offline Mode)
-        if (window.electronAPI) {
-            html = await window.electronAPI.getView(actualFileName);
-        } else {
-            // Berjalan di Web (Online Mode)
-            const response = await fetch(`views/${actualFileName}`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            html = await response.text();
+
+    if (viewLoadPromises[viewId]) return viewLoadPromises[viewId];
+
+    viewLoadPromises[viewId] = (async () => {
+        try {
+            let html = '';
+            if (window.electronAPI) {
+                html = await window.electronAPI.getView(actualFileName);
+            } else {
+                const response = await fetch(`views/${actualFileName}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                html = await response.text();
+            }
+
+            viewCache[viewId] = html;
+            return html;
+        } catch (error) {
+            console.error(`Gagal memuat view: ${actualFileName}`, error);
+            return `<div class="p-8 text-center text-red-500 font-bold">Gagal memuat antarmuka ${actualFileName}</div>`;
+        } finally {
+            delete viewLoadPromises[viewId];
         }
-        
-        viewCache[viewId] = html;
-        return html;
-    } catch (error) {
-        console.error(`Gagal memuat view: ${actualFileName}`, error);
-        return `<div class="p-8 text-center text-red-500 font-bold">Gagal memuat antarmuka ${actualFileName}</div>`;
-    }
+    })();
+
+    return viewLoadPromises[viewId];
+}
+
+function showViewLoadingState(targetEl) {
+    targetEl.dataset.viewLoading = 'true';
+    targetEl.innerHTML = '<div class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat halaman...</div>';
 }
 
 async function showView(viewId) {
-    if (typeof showLoading === 'function') showLoading();
+    const requestId = ++viewNavigationRequestId;
+    const isLoginView = viewId === 'loginPage';
+    if (isLoginView && typeof showLoading === 'function') showLoading();
 
     try {
-        if (viewId === 'loginPage') {
+        if (isLoginView) {
             const loginContainer = document.getElementById('loginPage');
             if (loginContainer && loginContainer.innerHTML.trim() === '') {
                 const html = await loadHTML('loginPage');
+                if (requestId !== viewNavigationRequestId) return;
                 loginContainer.innerHTML = html;
             }
+            if (requestId !== viewNavigationRequestId) return;
             if (loginContainer) loginContainer.classList.remove('hidden');
             const dash = document.getElementById('dashboardContainer');
             if (dash) dash.classList.add('hidden');
-
             if (typeof updateViewUI === 'function') updateViewUI(viewId);
             return;
         }
 
         const targetEl = document.getElementById(viewId);
-        if (targetEl) {
-            if (targetEl.innerHTML.trim() === '') {
-                const html = await loadHTML(viewId);
-                targetEl.innerHTML = normalizeViewHTML(viewId, html);
-
-                if (typeof initViewComponents === 'function') {
-                    initViewComponents(viewId);
-                }
-            }
-        }
-
         if (typeof updateViewUI === 'function') updateViewUI(viewId);
+        if (targetEl && (targetEl.innerHTML.trim() === '' || targetEl.dataset.viewLoading === 'true')) {
+            showViewLoadingState(targetEl);
+            const html = await loadHTML(viewId);
+            if (requestId !== viewNavigationRequestId) return;
+            targetEl.innerHTML = normalizeViewHTML(viewId, html);
+            delete targetEl.dataset.viewLoading;
+            if (typeof initViewComponents === 'function') {
+                initViewComponents(viewId);
+            }
+            if (typeof updateViewUI === 'function') updateViewUI(viewId);
+        }
     } catch (error) {
         console.error('showView error:', error);
-        if (typeof showAlert === 'function') {
+        if (requestId === viewNavigationRequestId && typeof showAlert === 'function') {
             showAlert('error', 'Halaman gagal dimuat. Silakan refresh atau coba lagi.');
         }
     } finally {
-        if (typeof hideLoading === 'function') hideLoading();
+        if (isLoginView && typeof hideLoading === 'function') hideLoading();
     }
 }
 
 async function preloadViews(viewIds) {
     for (const viewId of viewIds) {
         const targetEl = document.getElementById(viewId);
-        if (!targetEl || targetEl.innerHTML.trim() !== '') continue;
+        if (!targetEl || (targetEl.innerHTML.trim() !== '' && targetEl.dataset.viewLoading !== 'true')) continue;
         const html = await loadHTML(viewId);
         targetEl.innerHTML = normalizeViewHTML(viewId, html);
+        delete targetEl.dataset.viewLoading;
         if (typeof initViewComponents === 'function') initViewComponents(viewId);
     }
 }
