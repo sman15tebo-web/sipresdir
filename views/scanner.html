@@ -1,0 +1,51 @@
+<div id="view-scanner" class="view-section animate-fade-in">
+                    <div class="tab-presensi-monitoring flex items-end space-x-1 border-b border-gray-200 mb-6 bg-white px-1 pt-1 rounded-t-xl overflow-x-auto shadow-sm">
+                        <button onclick="loadScanAbsensi()" class="px-5 py-2.5 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50/50 rounded-t-lg transition-all whitespace-nowrap"><i class="fas fa-qrcode mr-2"></i>Scan Presensi</button>
+                        <button onclick="loadMonitoringAbsensi()" class="px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-t-lg transition-all whitespace-nowrap"><i class="fas fa-eye mr-2"></i>Monitoring</button>
+                        <button onclick="loadRekapAbsensi()" class="px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-t-lg transition-all whitespace-nowrap"><i class="fas fa-file-alt mr-2"></i>Laporan</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-[3fr_5fr] gap-6 items-start lg:w-4/5 lg:mx-auto">
+                        <section class="min-w-0 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                            <div class="p-4 bg-gray-900 text-white text-center">
+                                <h3 class="font-bold text-lg tracking-wide"><i class="fas fa-qrcode mr-2"></i>Scan dengan Kamera</h3>
+                            </div>
+                            <div class="p-4 sm:p-6">
+                                <div class="relative w-full max-w-sm mx-auto aspect-square bg-black rounded-xl overflow-hidden mb-4 shadow-inner">
+                                    <div id="reader" class="w-full h-full object-cover"></div>
+                                    <div id="camLoading" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-20">
+                                        <i class="fas fa-circle-notch fa-spin text-2xl mb-2 text-indigo-500"></i>
+                                        <p class="text-xs font-medium text-white">Memuat...</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 mb-2">
+                                    <button onclick="startCamera('environment')" class="flex-1 bg-blue-50 text-blue-700 py-2.5 rounded-lg font-bold text-xs hover:bg-blue-100"><i class="fas fa-camera mr-1"></i>Belakang</button>
+                                    <button onclick="startCamera('user')" class="flex-1 bg-purple-50 text-purple-700 py-2.5 rounded-lg font-bold text-xs hover:bg-purple-100"><i class="fas fa-camera mr-1"></i>Depan</button>
+                                </div>
+                                <div id="scanResultQr" class="hidden mt-4 text-center text-xs font-bold animate-fade-in"></div>
+                            </div>
+                        </section>
+
+                        <section class="min-w-0 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-visible">
+                            <div class="p-4 bg-indigo-700 text-white text-center rounded-t-2xl">
+                                <h3 class="font-bold text-lg tracking-wide"><i class="fas fa-keyboard mr-2"></i>Rekam Presensi Manual</h3>
+                                <p class="text-xs text-indigo-100 mt-1">Cari siswa berdasarkan nama atau NISN.</p>
+                            </div>
+                            <div class="p-5 sm:p-6">
+                                <label for="manualSiswaSearch" class="block text-xs font-bold text-gray-600 mb-2">Nama / NISN Siswa</label>
+                                <div class="relative">
+                                    <input id="manualSiswaSearch" type="text" autocomplete="off" oninput="filterSiswaManual(this.value)" placeholder="Ketik minimal 1 huruf atau angka..." class="w-full border border-gray-300 rounded-xl text-sm p-3 pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <i class="fas fa-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <div id="manualSiswaSuggestions" class="hidden absolute top-full left-0 right-0 z-30 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden"></div>
+                                </div>
+                                <div id="manualSiswaSelected" class="hidden mt-4 p-4 rounded-xl border border-emerald-200 bg-emerald-50"></div>
+                                <p id="manualSiswaHint" class="text-xs text-gray-400 mt-3">Daftar rekomendasi akan muncul saat mulai mengetik.</p>
+                                <button id="btnRekamManual" type="button" onclick="rekamPresensiManual()" disabled class="w-full mt-5 bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm shadow-md hover:bg-indigo-700 transition disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed">
+                                    <i class="fas fa-check-circle mr-2"></i>Rekam Sekarang
+                                </button>
+                                <div id="scanResultManual" class="hidden mt-4 text-center text-xs font-bold animate-fade-in"></div>
+                                <button onclick="stopAndBack(true)" class="w-full mt-3 bg-gray-100 text-gray-600 py-2.5 rounded-lg font-bold text-xs hover:bg-gray-200">Kembali</button>
+                            </div>
+                        </section>
+                    </div>
+
+                </div>
