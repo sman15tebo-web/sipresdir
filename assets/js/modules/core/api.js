@@ -195,6 +195,65 @@ function showAlert(type, message) {
 // ============================================================
 // Field yang TIDAK boleh masuk localStorage (terlalu besar, menyebabkan silent fail)
 const CONFIG_FIELDS_EXCLUDE_CACHE = ['logo', 'logoInstansi'];
+const BRANDING_CACHE_DB = 'sipresdir-branding-cache';
+const BRANDING_CACHE_STORE = 'branding';
+
+function openBrandingCache() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(BRANDING_CACHE_DB, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(BRANDING_CACHE_STORE)) {
+                request.result.createObjectStore(BRANDING_CACHE_STORE);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Gagal membuka cache logo.'));
+    });
+}
+
+async function readCachedBranding() {
+    if (!window.indexedDB) return null;
+    const db = await openBrandingCache();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(BRANDING_CACHE_STORE, 'readonly');
+        const request = transaction.objectStore(BRANDING_CACHE_STORE).get('logos');
+        request.onsuccess = () => {
+            db.close();
+            resolve(request.result || null);
+        };
+        request.onerror = () => {
+            db.close();
+            reject(request.error || new Error('Gagal membaca cache logo.'));
+        };
+    });
+}
+
+async function cacheBranding(data) {
+    if (!window.indexedDB) return;
+    const branding = {
+        logo: typeof data?.logo === 'string' ? data.logo : '',
+        logoInstansi: typeof data?.logoInstansi === 'string' ? data.logoInstansi : ''
+    };
+    if (!branding.logo && !branding.logoInstansi) return;
+
+    const db = await openBrandingCache();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(BRANDING_CACHE_STORE, 'readwrite');
+        transaction.objectStore(BRANDING_CACHE_STORE).put(branding, 'logos');
+        transaction.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        transaction.onerror = () => {
+            db.close();
+            reject(transaction.error || new Error('Gagal menyimpan cache logo.'));
+        };
+        transaction.onabort = () => {
+            db.close();
+            reject(transaction.error || new Error('Penyimpanan cache logo dibatalkan.'));
+        };
+    });
+}
 
 function stripLargeFields(data) {
     if (!data || typeof data !== 'object') return data;
@@ -211,11 +270,21 @@ async function initAppConfigs() {
         const cachedConfig = window.electronAPI
             ? (localStorage.getItem('appConfigFullCache') || localStorage.getItem('appConfigCache'))
             : localStorage.getItem('appConfigCache');
+        let cachedResult = null;
         if (cachedConfig) {
             try {
-                const result = JSON.parse(cachedConfig);
-                applyAppConfigToUI(result);
+                cachedResult = JSON.parse(cachedConfig);
+                applyAppConfigToUI(cachedResult);
             } catch (e) { }
+        }
+
+        if (!window.electronAPI) {
+            try {
+                const cachedBranding = await readCachedBranding();
+                if (cachedBranding) applyAppConfigToUI({ ...cachedResult, ...cachedBranding });
+            } catch (error) {
+                console.warn('Gagal membaca cache logo sekolah:', error);
+            }
         }
 
         const settingsResponse = window.electronAPI ? await fetchAPI('getAppConfig') : await fetchAPI('getSettings');
@@ -227,6 +296,8 @@ async function initAppConfigs() {
             try { localStorage.setItem('appConfigCache', JSON.stringify(stripLargeFields(result))); } catch (e) { console.warn('Cache config gagal:', e); }
             if (window.electronAPI) {
                 try { localStorage.setItem('appConfigFullCache', JSON.stringify(result)); } catch (e) { console.warn('Cache branding offline gagal:', e); }
+            } else {
+                try { await cacheBranding(result); } catch (error) { console.warn('Gagal menyimpan cache logo sekolah:', error); }
             }
             applyAppConfigToUI(result);
         }
@@ -240,9 +311,10 @@ async function initAppConfigs() {
 }
 
 function applyAppConfigToUI(result) {
+    const fallbackLogo = 'assets/img/imgsipresdir.png';
     const safeConfig = {
-        logo: 'assets/img/imgsipresdir.png',
-        logoInstansi: 'assets/img/imgsipresdir.png',
+        logo: fallbackLogo,
+        logoInstansi: fallbackLogo,
         namaInstansi: 'Instansi Pendidikan',
         namasekolah: 'SiPresDiR Plus',
         alamat: '',
@@ -251,10 +323,22 @@ function applyAppConfigToUI(result) {
         runningtext: 'Selamat datang di SiPresDiR Plus',
         ...(result || {})
     };
+    safeConfig.logo = typeof safeConfig.logo === 'string' && safeConfig.logo.trim() ? safeConfig.logo : fallbackLogo;
+    safeConfig.logoInstansi = typeof safeConfig.logoInstansi === 'string' && safeConfig.logoInstansi.trim()
+        ? safeConfig.logoInstansi
+        : safeConfig.logo;
     window.appConfig = safeConfig;
     applyGradientColors(safeConfig);
-    document.querySelectorAll('.dyn-logo').forEach(el => { if (el.tagName === 'IMG') el.src = safeConfig.logo; });
-    document.querySelectorAll('.dyn-logoInstansi').forEach(el => { if (el.tagName === 'IMG') el.src = safeConfig.logoInstansi || safeConfig.logo; });
+    document.querySelectorAll('.dyn-logo').forEach(el => {
+        if (el.tagName !== 'IMG') return;
+        el.onerror = () => { el.onerror = null; el.src = fallbackLogo; };
+        el.src = safeConfig.logo;
+    });
+    document.querySelectorAll('.dyn-logoInstansi').forEach(el => {
+        if (el.tagName !== 'IMG') return;
+        el.onerror = () => { el.onerror = null; el.src = fallbackLogo; };
+        el.src = safeConfig.logoInstansi;
+    });
     document.querySelectorAll('.dyn-namaInstansi').forEach(el => el.textContent = safeConfig.namaInstansi);
     document.querySelectorAll('.dyn-namasekolah').forEach(el => el.textContent = safeConfig.namasekolah);
     document.querySelectorAll('.dyn-alamat').forEach(el => el.textContent = safeConfig.alamat);
@@ -1032,9 +1116,9 @@ async function handleLogin(event) {
             if (!(await requirePasswordChange(result))) return;
             document.getElementById('loginPage').classList.add('hidden');
             document.getElementById('dashboardContainer').classList.remove('hidden');
-            await preloadRoleViews(result.role);
-            await initAppConfigs();
             initDashboard();
+            void preloadRoleViews(result.role);
+            void initAppConfigs();
         } else {
             const errorDiv = document.getElementById('loginError');
             if (errorDiv) {
@@ -1086,9 +1170,9 @@ async function checkSession() {
             document.getElementById('loginPage')?.classList.add('hidden');
             document.getElementById('dashboardContainer')?.classList.remove('hidden');
             if (window.innerWidth < 768) document.getElementById('sidebar')?.classList.add('-translate-x-full');
-            await preloadRoleViews(sessionData.role);
-            await initAppConfigs();
             initDashboard();
+            void preloadRoleViews(sessionData.role);
+            void initAppConfigs();
             return;
         } catch (e) {
             console.error('Session invalid', e);
