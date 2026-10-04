@@ -3,30 +3,64 @@
 // ============================================================
 const pendingScheduleDrafts = { libur: [], wfh: [] };
 let activeJadwalTab = 'sekolah';
+let jadwalLoadRequestId = 0;
 
 async function loadKelolaJadwal() {
-    stopAndBack(false); setActiveMenu('Kelola Jadwal'); showView('view-kelola-absen');
+    const requestId = ++jadwalLoadRequestId;
+    stopAndBack(false);
+    setActiveMenu('Kelola Jadwal');
+    await showView('view-kelola-absen');
+    if (requestId !== jadwalLoadRequestId || viewIdGlobal !== 'view-kelola-absen') return;
+
     switchJadwalTab(activeJadwalTab);
-    document.getElementById('tbody-libur').innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat...</td></tr>';
-    document.getElementById('tbody-wfh').innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat...</td></tr>';
-
-    try {
-        const resLibur = await fetchAPI('getHariLibur');
-        if (resLibur.success) {
-            tableState.libur.fullData = resLibur.data;
-            processTableData('libur');
-        }
-
-        const resWfh = await fetchAPI('getJadwalWFH');
-        if (resWfh.success) {
-            tableState.wfh.fullData = resWfh.data;
-            processTableData('wfh');
-        }
-
-    } catch (e) { }
     pendingScheduleDrafts.libur = [];
     pendingScheduleDrafts.wfh = [];
-    loadGlobalConfig();
+    const tbodyLibur = document.getElementById('tbody-libur');
+    const tbodyWfh = document.getElementById('tbody-wfh');
+    if (tbodyLibur) tbodyLibur.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat...</td></tr>';
+    if (tbodyWfh) tbodyWfh.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Memuat...</td></tr>';
+
+    const [liburResult, wfhResult, configResult] = await Promise.allSettled([
+        fetchAPI('getHariLibur'),
+        fetchAPI('getJadwalWFH'),
+        fetchAPI('getAppConfig')
+    ]);
+    if (requestId !== jadwalLoadRequestId || viewIdGlobal !== 'view-kelola-absen') return;
+
+    const renderLoadError = (tbody, label, result) => {
+        const error = result.status === 'rejected'
+            ? result.reason
+            : new Error(result.value?.message || `Server gagal memuat ${label}.`);
+        console.error(`Gagal memuat ${label}:`, error);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-600">Gagal memuat ${label}. Periksa koneksi, lalu buka kembali menu Kelola Jadwal.</td></tr>`;
+        }
+    };
+
+    if (liburResult.status === 'fulfilled' && liburResult.value?.success && Array.isArray(liburResult.value.data)) {
+        tableState.libur.fullData = liburResult.value.data;
+        processTableData('libur');
+    } else {
+        renderLoadError(tbodyLibur, 'daftar hari libur', liburResult);
+    }
+
+    if (wfhResult.status === 'fulfilled' && wfhResult.value?.success && Array.isArray(wfhResult.value.data)) {
+        tableState.wfh.fullData = wfhResult.value.data;
+        processTableData('wfh');
+    } else {
+        renderLoadError(tbodyWfh, 'jadwal WFH', wfhResult);
+    }
+
+    if (configResult.status === 'fulfilled' && configResult.value?.success) {
+        applyGlobalConfig(configResult.value);
+    } else {
+        const error = configResult.status === 'rejected'
+            ? configResult.reason
+            : new Error(configResult.value?.message || 'Server gagal memuat konfigurasi waktu.');
+        console.error('Gagal memuat konfigurasi waktu jadwal:', error);
+        const inputs = document.querySelectorAll('#view-kelola-absen input[type="time"]');
+        inputs.forEach(input => { input.disabled = false; });
+    }
 }
 
 function loadKelolaAbsen() {
@@ -50,50 +84,44 @@ window.switchJadwalTab = function (tab) {
     });
 };
 
-async function loadGlobalConfig() {
+function applyGlobalConfig(res) {
     const inputs = document.querySelectorAll('#view-kelola-absen input[type="time"]');
-    inputs.forEach(el => el.disabled = true);
-    try {
-        const res = await fetchAPI('getAppConfig');
-        inputs.forEach(el => el.disabled = false);
-        if (res.success) {
-            const conf = res.data;
-            // Config lama (WFH)
-            const setV = (id, val, def) => { const el = document.getElementById(id); if (el) el.value = val || def; };
-            setV('conf_wfh_masuk_mulai', conf.wfh_masuk_mulai, '06:00');
-            setV('conf_wfh_masuk_akhir', conf.wfh_masuk_akhir, '08:00');
-            setV('conf_wfh_pulang_mulai', conf.wfh_pulang_mulai, '15:00');
-            setV('conf_wfh_pulang_akhir', conf.wfh_pulang_akhir, '18:00');
-            // Config baru per kelompok hari
-            setV('conf_sk_masuk_mulai', conf.seninkamis_masuk_mulai, '06:00');
-            setV('conf_sk_masuk_akhir', conf.seninkamis_masuk_akhir, '07:15');
-            setV('conf_sk_masuk_batas_akhir', conf.seninkamis_masuk_batas_akhir, '11:00');
-            setV('conf_sk_pulang_mulai', conf.seninkamis_pulang_mulai, '15:00');
-            setV('conf_sk_pulang_akhir', conf.seninkamis_pulang_akhir, '17:00');
-            setV('conf_jum_masuk_mulai', conf.jumat_masuk_mulai, '06:00');
-            setV('conf_jum_masuk_akhir', conf.jumat_masuk_akhir, '07:15');
-            setV('conf_jum_masuk_batas_akhir', conf.jumat_masuk_batas_akhir, '11:00');
-            setV('conf_jum_pulang_mulai', conf.jumat_pulang_mulai, '11:00');
-            setV('conf_jum_pulang_akhir', conf.jumat_pulang_akhir, '13:00');
-            setV('conf_sab_masuk_mulai', conf.sabtu_masuk_mulai, '06:00');
-            setV('conf_sab_masuk_akhir', conf.sabtu_masuk_akhir, '07:15');
-            setV('conf_sab_masuk_batas_akhir', conf.sabtu_masuk_batas_akhir, '11:00');
-            setV('conf_sab_pulang_mulai', conf.sabtu_pulang_mulai, '12:00');
-            setV('conf_sab_pulang_akhir', conf.sabtu_pulang_akhir, '15:00');
+    inputs.forEach(el => { el.disabled = false; });
+    if (res?.success && res.data) {
+        const conf = res.data;
+        const setV = (id, val, def) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || def;
+        };
+        setV('conf_wfh_masuk_mulai', conf.wfh_masuk_mulai, '06:00');
+        setV('conf_wfh_masuk_akhir', conf.wfh_masuk_akhir, '08:00');
+        setV('conf_wfh_pulang_mulai', conf.wfh_pulang_mulai, '15:00');
+        setV('conf_wfh_pulang_akhir', conf.wfh_pulang_akhir, '18:00');
+        setV('conf_sk_masuk_mulai', conf.seninkamis_masuk_mulai, '06:00');
+        setV('conf_sk_masuk_akhir', conf.seninkamis_masuk_akhir, '07:15');
+        setV('conf_sk_masuk_batas_akhir', conf.seninkamis_masuk_batas_akhir, '11:00');
+        setV('conf_sk_pulang_mulai', conf.seninkamis_pulang_mulai, '15:00');
+        setV('conf_sk_pulang_akhir', conf.seninkamis_pulang_akhir, '17:00');
+        setV('conf_jum_masuk_mulai', conf.jumat_masuk_mulai, '06:00');
+        setV('conf_jum_masuk_akhir', conf.jumat_masuk_akhir, '07:15');
+        setV('conf_jum_masuk_batas_akhir', conf.jumat_masuk_batas_akhir, '11:00');
+        setV('conf_jum_pulang_mulai', conf.jumat_pulang_mulai, '11:00');
+        setV('conf_jum_pulang_akhir', conf.jumat_pulang_akhir, '13:00');
+        setV('conf_sab_masuk_mulai', conf.sabtu_masuk_mulai, '06:00');
+        setV('conf_sab_masuk_akhir', conf.sabtu_masuk_akhir, '07:15');
+        setV('conf_sab_masuk_batas_akhir', conf.sabtu_masuk_batas_akhir, '11:00');
+        setV('conf_sab_pulang_mulai', conf.sabtu_pulang_mulai, '12:00');
+        setV('conf_sab_pulang_akhir', conf.sabtu_pulang_akhir, '15:00');
 
-            const toggleLiburMinggu = document.getElementById('toggleLiburMinggu');
-            const toggleLiburSabtu = document.getElementById('toggleLiburSabtu');
-            if (toggleLiburMinggu) toggleLiburMinggu.checked = String(conf.libur_minggu) === 'true';
-            if (toggleLiburSabtu) toggleLiburSabtu.checked = String(conf.libur_sabtu) === 'true';
+        const toggleLiburMinggu = document.getElementById('toggleLiburMinggu');
+        const toggleLiburSabtu = document.getElementById('toggleLiburSabtu');
+        if (toggleLiburMinggu) toggleLiburMinggu.checked = String(conf.libur_minggu) === 'true';
+        if (toggleLiburSabtu) toggleLiburSabtu.checked = String(conf.libur_sabtu) === 'true';
 
-            // Highlight tab hari ini secara otomatis
-            const todayDay = new Date().getDay(); // 0=Minggu, 1=Senin, ..., 5=Jumat, 6=Sabtu
-            if (todayDay === 5) switchWaktuTab('jumat');
-            else if (todayDay === 6) switchWaktuTab('sabtu');
-            else switchWaktuTab('seninkamis');
-        }
-    } catch (e) {
-        inputs.forEach(el => el.disabled = false);
+        const todayDay = new Date().getDay();
+        if (todayDay === 5) switchWaktuTab('jumat');
+        else if (todayDay === 6) switchWaktuTab('sabtu');
+        else switchWaktuTab('seninkamis');
     }
 }
 
@@ -130,14 +158,9 @@ window.switchWaktuTab = function (tab) {
     });
 }
 
-async function saveGlobalConfig(btnElement, silent = false) {
-    const originalText = btnElement.innerHTML;
-    btnElement.disabled = true;
-    btnElement.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menyimpan...';
-
+function collectGlobalConfig() {
     const getV = (id, def) => { const el = document.getElementById(id); return el ? el.value : def; };
-
-    const newConfig = {
+    return {
         // Config WFH
         wfh_masuk_mulai: getV('conf_wfh_masuk_mulai', '06:00'),
         wfh_masuk_akhir: getV('conf_wfh_masuk_akhir', '08:00'),
@@ -162,19 +185,30 @@ async function saveGlobalConfig(btnElement, silent = false) {
         sabtu_pulang_mulai: getV('conf_sab_pulang_mulai', '12:00'),
         sabtu_pulang_akhir: getV('conf_sab_pulang_akhir', '15:00')
     };
+}
+
+async function saveGlobalConfig(btnElement, silent = false) {
+    const originalText = btnElement.innerHTML;
+    btnElement.disabled = true;
+    btnElement.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menyimpan...';
 
     try {
-        const res = await fetchAPI('saveAppConfig', { newConfig: newConfig });
+        const res = await fetchAPI('saveAppConfig', { newConfig: collectGlobalConfig() });
         btnElement.disabled = false;
         btnElement.innerHTML = originalText;
-
         if (res.success) {
-            const statusHari = await fetchAPI('cekWFHToday');
-            if (statusHari) window.appStatusHari = statusHari;
+            if (!silent) {
+                try {
+                    const statusHari = await fetchAPI('cekWFHToday');
+                    if (statusHari) window.appStatusHari = statusHari;
+                } catch (error) {
+                    console.warn('Konfigurasi tersimpan, tetapi status hari belum dapat diperbarui:', error);
+                }
+            }
             if (!silent) showAlert('success', 'Pengaturan waktu berhasil disimpan!');
             return true;
         } else {
-            showAlert('error', res.message);
+            showAlert('error', res?.message || 'Pengaturan waktu gagal disimpan.');
             return false;
         }
     } catch (err) {
@@ -186,6 +220,7 @@ async function saveGlobalConfig(btnElement, silent = false) {
 }
 
 async function saveScheduleSection(btnElement, formId, successMessage) {
+    if (btnElement.disabled) return;
     const form = document.getElementById(formId);
     const date = form?.elements.tanggal?.value || '';
     const note = form?.elements.keterangan?.value.trim() || '';
@@ -194,19 +229,35 @@ async function saveScheduleSection(btnElement, formId, successMessage) {
         return;
     }
     const type = formId === 'formTambahLibur' ? 'libur' : 'wfh';
-    const savedConfig = await saveGlobalConfig(btnElement, true);
-    if (!savedConfig) return;
-    const drafts = [...pendingScheduleDrafts[type]];
-    if (date && note) drafts.push({ tanggal: date, keterangan: note });
-    for (const draft of drafts) {
-        const action = type === 'libur' ? 'addHariLibur' : 'addJadwalWFH';
-        const res = await fetchAPI(action, { tanggal: draft.tanggal, keterangan: draft.keterangan });
-        if (!res.success) { showAlert('error', res.message); return; }
+    const originalText = btnElement.innerHTML;
+    btnElement.disabled = true;
+    btnElement.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menyimpan...';
+    try {
+        const drafts = [...pendingScheduleDrafts[type]];
+        if (date && note) drafts.push({ tanggal: date, keterangan: note });
+        const res = await fetchAPI('saveScheduleWithConfig', {
+            newConfig: collectGlobalConfig(),
+            scheduleType: type,
+            drafts
+        });
+        if (!res?.success) {
+            const message = res?.message || 'Jadwal gagal disimpan.';
+            showAlert(res?.configSaved ? 'warning' : 'error', res?.configSaved
+                ? `Waktu berhasil disimpan, tetapi jadwal tidak ditambahkan: ${message}`
+                : message);
+            return;
+        }
+        pendingScheduleDrafts[type].length = 0;
+        if (date && note) form.reset();
+        showAlert('success', successMessage);
+        void loadKelolaAbsen();
+    } catch (error) {
+        console.error('Gagal menyimpan jadwal:', error);
+        showAlert('error', 'Jadwal gagal disimpan: ' + (error.message || error));
+    } finally {
+        btnElement.disabled = false;
+        btnElement.innerHTML = originalText;
     }
-    pendingScheduleDrafts[type].length = 0;
-    if (date && note) form.reset();
-    await loadKelolaAbsen();
-    showAlert('success', successMessage);
 }
 
 function focusScheduleForm(formId) {
