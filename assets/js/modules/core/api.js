@@ -83,6 +83,7 @@ function getSession() {
 async function fetchAPI(action, params = {}) {
     const payload = { ...params, action, _ts: Date.now() };
     if (currentUser && currentUser.token && !payload.token) payload.token = currentUser.token;
+    let timeoutId;
     try {
         if (window.electronAPI) {
             return await window.electronAPI.queryDB(action, payload);
@@ -90,7 +91,7 @@ async function fetchAPI(action, params = {}) {
 
         const endpoint = API_URL || DEFAULT_API_URL;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 detik timeout
+        timeoutId = setTimeout(() => controller.abort(), 30000);
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -99,8 +100,6 @@ async function fetchAPI(action, params = {}) {
             redirect: 'follow',
             signal: controller.signal
         });
-
-        clearTimeout(timeoutId);
 
         const text = await response.text();
         try {
@@ -114,6 +113,8 @@ async function fetchAPI(action, params = {}) {
     } catch (error) {
         console.error("Fetch Error:", error);
         throw error;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
     }
 }
 
@@ -234,7 +235,6 @@ async function cacheBranding(data) {
         logo: typeof data?.logo === 'string' ? data.logo : '',
         logoInstansi: typeof data?.logoInstansi === 'string' ? data.logoInstansi : ''
     };
-    if (!branding.logo && !branding.logoInstansi) return;
 
     const db = await openBrandingCache();
     return new Promise((resolve, reject) => {
@@ -483,6 +483,14 @@ async function loadPengaturan() {
         let mergedCacheData = {};
         if (rawCache2) { try { mergedCacheData = { ...mergedCacheData, ...JSON.parse(rawCache2) }; } catch (e) { } }
         if (rawCache1) { try { mergedCacheData = { ...mergedCacheData, ...JSON.parse(rawCache1) }; } catch (e) { } }
+        if (!window.electronAPI) {
+            try {
+                const cachedBranding = await readCachedBranding();
+                if (cachedBranding) mergedCacheData = { ...mergedCacheData, ...cachedBranding };
+            } catch (error) {
+                console.warn('Gagal membaca cache logo untuk pengaturan:', error);
+            }
+        }
         if (Object.keys(mergedCacheData).length > 0) {
             applyPengaturanFormData(form, mergedCacheData);
         }
@@ -515,6 +523,9 @@ async function loadPengaturan() {
             } catch (e) { console.warn('Gagal simpan cache pengaturan:', e); }
             // Render form dengan data LENGKAP (termasuk logo dari server)
             applyPengaturanFormData(form, finalSettings);
+            if (!window.electronAPI) {
+                try { await cacheBranding(finalSettings); } catch (error) { console.warn('Gagal menyimpan cache logo dari server:', error); }
+            }
             console.info('[Pengaturan] Form berhasil diisi', Object.keys(finalSettings));
         } else if (res && res.success === false) {
             console.warn('loadPengaturan: server error -', res.message);
@@ -661,26 +672,35 @@ async function saveLinkData(e) {
             ? await fetchAPI('saveAppConfig', { newConfig: data })
             : await fetchAPI('updateLinkSettings', { token: token, data: data });
         hideLoading();
-        if (res.success) {
+        if (res?.success) {
+            const savedConfig = res.data && typeof res.data === 'object' ? res.data : data;
             // Simpan ke cache hanya field teks (tanpa logo besar)
             try {
                 const cachedData = JSON.parse(localStorage.getItem('app_configs') || '{}');
-                const cacheOnly = stripLargeFields({ ...cachedData, ...data });
+                const cacheOnly = stripLargeFields({ ...cachedData, ...savedConfig });
                 localStorage.setItem('app_configs', JSON.stringify(cacheOnly));
                 localStorage.setItem('appConfigCache', JSON.stringify(cacheOnly));
             } catch (e) { console.warn('Gagal simpan cache setelah save:', e); }
-            applyPengaturanFormData(e.target, data);
-            showAlert('success', res.message);
-            initAppConfigs();
+            if (!window.electronAPI) {
+                try { await cacheBranding(savedConfig); } catch (error) { console.warn('Gagal menyimpan logo ke cache browser:', error); }
+            }
+            applyPengaturanFormData(e.target, savedConfig);
+            applyAppConfigToUI({ ...window.appConfig, ...savedConfig });
+            showAlert('success', res.message || 'Pengaturan berhasil disimpan.');
         }
-        else { showAlert('error', res.message); }
-    } catch (err) { hideLoading(); }
+        else { showAlert('error', res?.message || 'Pengaturan gagal disimpan.'); }
+    } catch (err) {
+        hideLoading();
+        console.error('Gagal menyimpan pengaturan sekolah:', err);
+        showAlert('error', 'Pengaturan gagal disimpan: ' + (err.message || err));
+    }
 }
 
 // LOGIKA UPLOAD & CROP LOGO
 let cropperInstance = null;
 let targetCropInput = '';
 let targetCropPreview = '';
+const MAX_LOGO_DATA_URL_LENGTH = 45000;
 
 document.addEventListener("DOMContentLoaded", async function () {
     const dateElement = document.getElementById('currentDateDisplay');
@@ -776,8 +796,28 @@ function closeCropModal() {
 
 function applyCrop() {
     if (!cropperInstance) return;
-    const canvas = cropperInstance.getCroppedCanvas({ width: 400, height: 400 });
-    const croppedBase64 = canvas.toDataURL('image/png');
+    const canvas = cropperInstance.getCroppedCanvas({ width: 250, height: 250 });
+    if (!canvas) {
+        showAlert('error', 'Logo gagal diproses. Silakan pilih gambar lain.');
+        return;
+    }
+
+    let croppedBase64 = '';
+    for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42, 0.32]) {
+        const encoded = canvas.toDataURL('image/webp', quality);
+        if (encoded.startsWith('data:image/webp') && encoded.length <= MAX_LOGO_DATA_URL_LENGTH) {
+            croppedBase64 = encoded;
+            break;
+        }
+    }
+    if (!croppedBase64) {
+        const png = canvas.toDataURL('image/png');
+        if (png.length <= MAX_LOGO_DATA_URL_LENGTH) croppedBase64 = png;
+    }
+    if (!croppedBase64) {
+        showAlert('error', 'Ukuran logo masih lebih dari 45 KB. Gunakan gambar yang lebih sederhana atau browser yang mendukung WebP.');
+        return;
+    }
 
     document.getElementById(targetCropPreview).src = croppedBase64;
     document.getElementById(targetCropInput).value = croppedBase64;
