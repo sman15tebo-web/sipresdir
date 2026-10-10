@@ -515,7 +515,14 @@ async function processDailyExportCustom(btnElement) {
     if (!tglDipilih) { showAlert('error', 'Pilih tanggal dulu!'); return; }
 
     let filterKelas = "";
-    if (typeof currentUser !== 'undefined' && currentUser.role === 'guru' && currentUser.kelas) { filterKelas = currentUser.kelas; }
+    if (typeof currentUser !== 'undefined' && currentUser.role === 'guru' && currentUser.kelas) { 
+        filterKelas = currentUser.kelas; 
+    } else {
+        const monFilterEl = document.getElementById('filterKelasMonitoring');
+        if (monFilterEl && monFilterEl.value && monFilterEl.value !== 'Semua Kelas' && monFilterEl.value !== 'all') {
+            filterKelas = monFilterEl.value;
+        }
+    }
 
     const originalText = btnElement.innerHTML;
     btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
