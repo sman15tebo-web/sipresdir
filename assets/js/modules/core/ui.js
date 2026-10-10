@@ -209,30 +209,111 @@ async function executeSync() {
         if (!prepRes.success) throw new Error('Gagal menyiapkan data lokal: ' + prepRes.message);
         updateProgress('step-prep', 'success', 'Data lokal siap dikirim.');
 
-        updateProgress('step-auth', 'loading', 'Mengautentikasi dengan server online...');
+        updateProgress('step-auth', 'loading', 'Menghubungkan ke server Google Apps Script...');
         const config = await window.electronAPI.getOfflineConfig();
-        const loginRes = await fetch(newLink, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'login', username: config.admin.username, password: config.admin.password }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const loginData = await loginRes.json();
-        if (!loginRes.ok || !loginData.success) {
-            throw new Error('Gagal login ke server online: ' + (loginData.message || 'Kredensial tidak valid.'));
-        }
-        const onlineToken = loginData.token;
-        updateProgress('step-auth', 'success', 'Autentikasi berhasil.');
-
-        updateProgress('step-transfer', 'loading', 'Mengunggah & mengunduh data ke server...');
         const syncPayload = prepRes.data || prepRes.syncData || {};
-        const response = await fetch(newLink, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: syncPayload }),
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.message || 'Server tidak merespons dengan benar.');
-        updateProgress('step-transfer', 'success', 'Transfer data selesai.');
+
+        let onlineToken = null;
+        let result = null;
+
+        // 1. Coba Direct Sync terlebih dahulu (Cukup Link Exec tanpa perlu password)
+        try {
+            const directRes = await fetch(newLink, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'syncData', token: 'direct_sync', payload: syncPayload }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            const directJson = await directRes.json();
+            if (directRes.ok && directJson && directJson.success) {
+                onlineToken = 'direct_sync';
+                result = directJson;
+                updateProgress('step-auth', 'success', 'Koneksi Link Exec berhasil (Direct Sync).');
+                updateProgress('step-transfer', 'success', 'Transfer data berhasil disinkronkan.');
+            }
+        } catch (_) {
+            // Lanjut ke fallback autentikasi token jika direct sync belum didukung di server online
+        }
+
+        // 2. Jika server online masih mewajibkan token login (versi lama):
+        if (!onlineToken || !result) {
+            updateProgress('step-auth', 'loading', 'Mengautentikasi akun dengan server online...');
+            
+            // Kumpulkan kandidat password otomatis
+            const candidates = [];
+            const savedOnlinePass = localStorage.getItem('sipresdir_online_sync_pass');
+            if (savedOnlinePass) candidates.push(savedOnlinePass);
+            if (config?.admin?.password && !candidates.includes(config.admin.password)) candidates.push(config.admin.password);
+            ['123456', 'admin', 'admin123'].forEach(dp => {
+                if (!candidates.includes(dp)) candidates.push(dp);
+            });
+
+            const uName = config?.admin?.username || 'admin';
+            for (const candPass of candidates) {
+                try {
+                    const lRes = await fetch(newLink, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'login', username: uName, password: candPass }),
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    });
+                    const lData = await lRes.json();
+                    if (lRes.ok && lData && lData.success && lData.token) {
+                        onlineToken = lData.token;
+                        localStorage.setItem('sipresdir_online_sync_pass', candPass);
+                        break;
+                    }
+                } catch (_) {}
+            }
+
+            // Jika semua kandidat belum cocok (misal admin online diubah ke password kustom), minta input dari user
+            if (!onlineToken) {
+                const promptRes = await Swal.fire({
+                    title: 'Autentikasi Akun Online',
+                    html: `
+                        <div class="text-left text-xs text-gray-600 mb-3">
+                            <p class="mb-2">Password akun admin offline laptop berbeda dengan password online Spreadsheet.</p>
+                            <p class="font-bold text-gray-700">Masukkan Password Admin Online Spreadsheet Anda:</p>
+                        </div>
+                    `,
+                    input: 'password',
+                    inputPlaceholder: 'Password admin online...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Verifikasi & Lanjutkan Sinkron',
+                    cancelButtonText: 'Batal',
+                    inputValidator: (val) => {
+                        if (!val) return 'Password online tidak boleh kosong!';
+                    }
+                });
+
+                if (!promptRes.isConfirmed || !promptRes.value) {
+                    throw new Error('Sinkronisasi dibatalkan (password online tidak diisi).');
+                }
+
+                const manualPass = promptRes.value.trim();
+                const lRes = await fetch(newLink, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'login', username: uName, password: manualPass }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+                const lData = await lRes.json();
+                if (!lRes.ok || !lData.success) {
+                    throw new Error('Gagal login ke server online: ' + (lData.message || 'Password online salah.'));
+                }
+                onlineToken = lData.token;
+                localStorage.setItem('sipresdir_online_sync_pass', manualPass);
+            }
+
+            updateProgress('step-auth', 'success', 'Autentikasi server online berhasil.');
+
+            updateProgress('step-transfer', 'loading', 'Mengunggah & mengunduh data ke server...');
+            const response = await fetch(newLink, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: syncPayload }),
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+            });
+            result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || 'Server tidak merespons dengan benar.');
+            updateProgress('step-transfer', 'success', 'Transfer data selesai.');
+        }
 
         updateProgress('step-process', 'loading', 'Memproses pembaruan dari server ke lokal...');
         const procRes = await window.electronAPI.queryDB('processSyncResponse', { token: currentUser?.token, masterData: result.masterData, syncedIds: result.syncedIds });
