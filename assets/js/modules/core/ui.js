@@ -2,9 +2,10 @@
 // INISIALISASI UI BERDASARKAN ROLE
 // ============================================================
 function initDashboard() {
-    const name = currentUser.nama || currentUser.username;
+    const name = (currentUser && (currentUser.nama || currentUser.username)) || 'Pengguna';
+    const role = String((currentUser && currentUser.role) || 'ADMIN').toUpperCase();
     document.getElementById('navUserName').textContent = name;
-    document.getElementById('navUserRole').textContent = currentUser.role.toUpperCase();
+    document.getElementById('navUserRole').textContent = role;
     document.getElementById('navUserInitial').textContent = name.charAt(0).toUpperCase();
 
     const menuContainer = document.getElementById('sidebarMenu');
