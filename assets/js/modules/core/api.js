@@ -543,20 +543,24 @@ async function loadPengaturan() {
 }
 
 async function loadOfflineSettings() {
-    const form = document.getElementById('offlineAccountsForm');
-    if (!form || !window.electronAPI) return;
+    if (!window.electronAPI) return;
     try {
         const config = await window.electronAPI.getOfflineConfig();
-        form.elements.offlineUsername.value = config.admin?.username || '';
-        form.elements.guruUsername.value = config.guru?.username || '';
-        form.elements.offlinePassword.value = '';
-        form.elements.offlinePasswordConfirm.value = '';
-        form.elements.guruPassword.value = '';
-        const link = localStorage.getItem('customSyncLink') || config.link_exec_sync || '';
+        const form = document.getElementById('offlineAccountsForm');
+        if (form && config) {
+            if (form.elements.offlineUsername) form.elements.offlineUsername.value = config.admin?.username || config.username || '';
+            if (form.elements.guruUsername) form.elements.guruUsername.value = config.guru?.username || '';
+            if (form.elements.offlinePassword) form.elements.offlinePassword.value = '';
+            if (form.elements.offlinePasswordConfirm) form.elements.offlinePasswordConfirm.value = '';
+            if (form.elements.guruPassword) form.elements.guruPassword.value = '';
+        }
+        const link = localStorage.getItem('customSyncLink') || config?.link_exec_sync || config?.OFFLINE_EXEC_LINK || config?.gasUrl || config?.linkExec || config?.defaultSyncUrl || '';
         const linkInput = document.getElementById('syncExecReadonly');
-        if (linkInput) linkInput.value = link;
+        if (linkInput && link) {
+            linkInput.value = link;
+        }
     } catch (error) {
-        showAlert('error', 'Konfigurasi offline tidak dapat dibaca.');
+        console.warn('Konfigurasi offline tidak dapat dibaca:', error);
     }
 }
 
@@ -647,6 +651,7 @@ async function copySyncExecLink() {
 
 window.saveOfflineAccounts = saveOfflineAccounts;
 window.copySyncExecLink = copySyncExecLink;
+window.loadOfflineSettings = loadOfflineSettings;
 
 async function saveLinkData(e) {
     e.preventDefault(); const fd = new FormData(e.target); const token = currentUser ? currentUser.token : null;
