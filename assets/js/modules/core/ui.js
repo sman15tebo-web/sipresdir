@@ -529,20 +529,37 @@ function refreshData(type) {
 
 
 window.lihatBuktiAdmin = async function (nisnOrUrl) {
+    if (!nisnOrUrl) {
+        showAlert('error', 'Bukti foto/surat tidak ditemukan.');
+        return;
+    }
+
     let rawUrl = (window.adminBuktiCache && window.adminBuktiCache[nisnOrUrl]) || nisnOrUrl;
     let finalUrl = null;
     let isOfflineCache = false;
+
+    const extractId = (str) => {
+        if (!str || typeof str !== 'string') return null;
+        const m1 = str.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+        if (m1) return m1[1];
+        const m2 = str.match(/[?&]id=([a-zA-Z0-9_-]{25,})/);
+        if (m2) return m2[1];
+        if (/^[a-zA-Z0-9_-]{25,50}$/.test(str.trim())) return str.trim();
+        return null;
+    };
+
+    const isHttp = typeof rawUrl === 'string' && (rawUrl.startsWith('http://') || rawUrl.startsWith('https://') || rawUrl.startsWith('data:image'));
 
     if (window.electronAPI) {
         showLoading();
         try {
             const cacheRes = await window.electronAPI.queryDB('getBuktiImage', {
-                url: typeof rawUrl === 'string' && rawUrl.includes('drive.google.com') ? rawUrl : null,
-                nisn: nisnOrUrl
+                url: isHttp ? rawUrl : null,
+                nisn: typeof nisnOrUrl === 'string' && !nisnOrUrl.startsWith('http') ? nisnOrUrl : null
             });
             if (cacheRes && cacheRes.success && cacheRes.dataUrl) {
                 finalUrl = cacheRes.dataUrl;
-                isOfflineCache = true;
+                isOfflineCache = cacheRes.source === 'cache_sqlite' || cacheRes.source === 'cache_disk' || cacheRes.source === 'download_ondemand';
             }
         } catch (e) {
             console.warn('Gagal memuat cache bukti lokal:', e);
@@ -551,7 +568,14 @@ window.lihatBuktiAdmin = async function (nisnOrUrl) {
     }
 
     if (!finalUrl) {
-        finalUrl = rawUrl;
+        if (isHttp) {
+            const fileId = extractId(rawUrl);
+            if (fileId) {
+                finalUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            } else {
+                finalUrl = rawUrl;
+            }
+        }
     }
 
     if (finalUrl && typeof finalUrl === 'string' && (finalUrl.startsWith('http') || finalUrl.startsWith('data:image'))) {
