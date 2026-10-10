@@ -95,7 +95,7 @@
                     </button>
                 </div>
 
-                <form onsubmit="handleLogin(event)" class="space-y-4 lg:space-y-5">
+                <form id="mainLoginForm" novalidate onsubmit="handleLogin(event)" class="space-y-4 lg:space-y-5">
                     <div id="formSiswaLogin" class="animate-fade-in space-y-4 lg:space-y-5">
                         <div>
                             <label
@@ -106,7 +106,7 @@
                                     class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-indigo-200">
                                     <i class="far fa-id-card text-lg"></i>
                                 </div>
-                                <input type="text" inputmode="numeric" pattern="[0-9]*" onblur="padNisn(this)" id="nisn"
+                                <input type="text" inputmode="numeric" onblur="padNisn(this)" id="nisn"
                                     class="block w-full pl-12 pr-4 py-3 bg-white/20 border-white/20 border rounded-xl text-white text-sm placeholder-indigo-100/70 focus:bg-white/30 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all backdrop-blur-sm"
                                     placeholder="Masukkan NISN">
                             </div>
@@ -163,9 +163,9 @@
                         </div>
                     </div>
 
-                    <button type="submit"
+                    <button type="submit" id="btnSubmitLogin" onclick="handleLogin(event)"
                         class="w-full py-3 lg:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/50 hover:shadow-indigo-900/80 border border-white/30 transition-all transform active:scale-[0.98] text-sm flex justify-center items-center gap-3 backdrop-blur-md">
-                        <span>LOGIN</span> <i class="fas fa-arrow-right-long"></i>
+                        <span id="btnSubmitLoginText">LOGIN</span> <i class="fas fa-arrow-right-long" id="btnSubmitLoginIcon"></i>
                     </button>
                 </form>
 
