@@ -448,6 +448,7 @@ async function loadPengaturan() {
         if (offlinePanel) offlinePanel.classList.add('hidden');
     }
     document.querySelectorAll('.offline-only-settings').forEach(el => el.classList.toggle('hidden', !window.electronAPI));
+    document.querySelectorAll('.online-only-settings').forEach(el => el.classList.toggle('hidden', !!window.electronAPI));
     const securityTab = document.getElementById('tab-keamanan');
     const offlineForm = document.getElementById('offlineAccountsForm');
     const onlinePasswordForm = securityTab ? Array.from(securityTab.querySelectorAll('form')).find(form => form.id !== 'offlineAccountsForm') : null;
@@ -548,11 +549,15 @@ async function loadOfflineSettings() {
         const config = await window.electronAPI.getOfflineConfig();
         const form = document.getElementById('offlineAccountsForm');
         if (form && config) {
-            if (form.elements.offlineUsername) form.elements.offlineUsername.value = config.admin?.username || config.username || '';
-            if (form.elements.guruUsername) form.elements.guruUsername.value = config.guru?.username || '';
-            if (form.elements.offlinePassword) form.elements.offlinePassword.value = '';
-            if (form.elements.offlinePasswordConfirm) form.elements.offlinePasswordConfirm.value = '';
-            if (form.elements.guruPassword) form.elements.guruPassword.value = '';
+            const adminUser = config.admin?.username || config.username || 'admin-sman15tebo';
+            const adminPass = config.admin?.password || 'admin123';
+            const guruUser = config.guru?.username || 'gurupiket';
+            const guruPass = config.guru?.password || 'gurupiket123';
+
+            if (form.elements.offlineUsername) form.elements.offlineUsername.value = adminUser;
+            if (form.elements.guruUsername) form.elements.guruUsername.value = guruUser;
+            if (form.elements.offlinePassword) form.elements.offlinePassword.value = adminPass;
+            if (form.elements.guruPassword) form.elements.guruPassword.value = guruPass;
         }
         const link = localStorage.getItem('customSyncLink') || config?.link_exec_sync || config?.OFFLINE_EXEC_LINK || config?.gasUrl || config?.linkExec || config?.defaultSyncUrl || '';
         const linkInput = document.getElementById('syncExecReadonly');
@@ -990,9 +995,22 @@ function togglePasswordSiswa() {
 function toggleInputPass(inputId, iconId) {
     const inp = document.getElementById(inputId);
     const icon = document.getElementById(iconId);
-    if (inp.type === "password") { inp.type = "text"; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
-    else { inp.type = "password"; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        if (icon) {
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    } else {
+        inp.type = "password";
+        if (icon) {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
 }
+window.toggleInputPass = toggleInputPass;
 
 function restoreRememberedLogin() {
     const username = document.getElementById('username');
