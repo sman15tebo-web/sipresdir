@@ -121,7 +121,8 @@
                                 <p class="text-xs text-gray-500 mt-1">Ganti password administrator.</p>
                             </div>
                             <div class="p-5">
-                                <div class="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                <!-- Panel Admin Online (Hanya tampil di Web Online, otomatis disembunyikan di versi Desktop) -->
+                                <div id="onlineAdminPanel" class="online-only-settings mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3"><i class="fas fa-user-shield mr-2"></i>Admin Online</h4>
                                     <form onsubmit="changeAdminPass(event)" class="space-y-4">
                                         <div>
@@ -130,16 +131,28 @@
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 mb-1">Password Baru</label>
-                                            <input type="password" name="newPass" required minlength="6" autocomplete="new-password" placeholder="Minimal 6 karakter" class="w-full border-gray-300 rounded-lg text-sm p-2.5 focus:ring-rose-500 focus:border-rose-500">
+                                            <div class="relative">
+                                                <input type="password" id="onlineAdminNewPass" name="newPass" required minlength="6" autocomplete="new-password" placeholder="Minimal 6 karakter" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 focus:ring-rose-500 focus:border-rose-500 bg-white">
+                                                <button type="button" onclick="toggleInputPass('onlineAdminNewPass', 'iconOnlineAdminNewPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconOnlineAdminNewPass"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 mb-1">Konfirmasi Password Baru</label>
-                                            <input type="password" name="confirmPass" required minlength="6" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full border-gray-300 rounded-lg text-sm p-2.5 focus:ring-rose-500 focus:border-rose-500">
+                                            <div class="relative">
+                                                <input type="password" id="onlineAdminConfirmPass" name="confirmPass" required minlength="6" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 focus:ring-rose-500 focus:border-rose-500 bg-white">
+                                                <button type="button" onclick="toggleInputPass('onlineAdminConfirmPass', 'iconOnlineAdminConfirmPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconOnlineAdminConfirmPass"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <button type="submit" id="btnChangePass" class="w-full bg-rose-600 text-white py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-rose-700 transition"><i class="fas fa-key mr-2"></i>Simpan Password Baru</button>
                                     </form>
                                 </div>
-                                <form id="offlineAccountsForm" onsubmit="saveOfflineAccounts(event)" class="offline-only-settings hidden mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+
+                                <!-- Panel Akun Offline (Tampil khusus di versi Desktop Offline) -->
+                                <form id="offlineAccountsForm" class="offline-only-settings hidden mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3"><i class="fas fa-desktop mr-2"></i>Akun Offline</h4>
                                     <div class="offline-only-settings hidden mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3">
                                         <h5 class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2"><i class="fas fa-link mr-2"></i>Link Exec Sinkronisasi</h5>
@@ -150,18 +163,34 @@
                                     </div>
                                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                         <div>
-                                            <p class="text-[10px] font-bold uppercase text-amber-700 mb-2">Admin Offline</p>
-                                            <input type="text" name="offlineUsername" required readonly placeholder="Username admin" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2 bg-gray-100 text-gray-600 cursor-not-allowed">
-                                            <input type="password" name="offlinePassword" placeholder="Password baru" minlength="6" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2">
-                                            <input type="password" name="offlinePasswordConfirm" placeholder="Konfirmasi password" minlength="6" class="w-full border-gray-300 rounded-lg text-sm p-2.5">
+                                            <p class="text-[10px] font-bold uppercase text-amber-700 mb-2"><i class="fas fa-user-shield mr-1"></i>Admin Offline</p>
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Username Admin</label>
+                                            <input type="text" name="offlineUsername" id="offlineUsername" required readonly placeholder="Username admin" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2 bg-gray-100 text-gray-700 cursor-not-allowed">
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Password Admin Bawaan</label>
+                                            <div class="relative mb-2">
+                                                <input type="password" name="offlinePassword" id="offlinePassword" readonly placeholder="Password bawaan" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 bg-gray-100 text-gray-700 font-mono cursor-not-allowed">
+                                                <button type="button" onclick="toggleInputPass('offlinePassword', 'iconOfflineAdminPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-800 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconOfflineAdminPass"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div>
-                                            <p class="text-[10px] font-bold uppercase text-amber-700 mb-2">Guru Piket Offline</p>
-                                            <input type="text" name="guruUsername" readonly placeholder="Username guru piket" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2 bg-gray-100 text-gray-600 cursor-not-allowed">
-                                            <input type="password" name="guruPassword" placeholder="Password guru piket" minlength="6" class="w-full border-gray-300 rounded-lg text-sm p-2.5">
+                                            <p class="text-[10px] font-bold uppercase text-amber-700 mb-2"><i class="fas fa-user-tie mr-1"></i>Guru Piket Offline</p>
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Username Guru Piket</label>
+                                            <input type="text" name="guruUsername" id="guruUsername" readonly placeholder="Username guru piket" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2 bg-gray-100 text-gray-700 cursor-not-allowed">
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Password Guru Piket Bawaan</label>
+                                            <div class="relative mb-2">
+                                                <input type="password" name="guruPassword" id="guruPassword" readonly placeholder="Password bawaan" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 bg-gray-100 text-gray-700 font-mono cursor-not-allowed">
+                                                <button type="button" onclick="toggleInputPass('guruPassword', 'iconGuruPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-800 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconGuruPass"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                    <button type="submit" class="w-full mt-4 bg-amber-600 text-white py-2.5 rounded-lg text-sm font-bold"><i class="fas fa-save mr-2"></i>Simpan Akun Offline</button>
+                                    <div class="mt-3 p-3 bg-amber-100/70 rounded-xl border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
+                                        <i class="fas fa-info-circle text-amber-600 text-base shrink-0"></i>
+                                        <span>Kredensial akun offline disetel bawaan secara aman (klik ikon mata <i class="fas fa-eye text-amber-700 mx-1"></i> untuk melihat password).</span>
+                                    </div>
                                 </form>
                                 <div id="backupRestorePanel" class="mt-8 border-t border-gray-100 pt-6">
                                     <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-database text-indigo-500 mr-2"></i>Backup &amp; Restore 100% DB
