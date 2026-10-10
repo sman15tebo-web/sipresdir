@@ -92,7 +92,7 @@ function renderTabelRekapSiswa(data) {
                 <div class="flex flex-nowrap items-center gap-2 p-1 bg-gray-50 rounded-lg w-max">
                     ${badgeHtml}
                     <div class="flex flex-nowrap items-center gap-1">
-                        <a href="${fotoLink}" target="_blank" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 py-1 px-2 rounded-lg text-[9px] font-bold transition shadow-sm inline-flex items-center gap-1 whitespace-nowrap"><i class="fas fa-image"></i> Foto</a>
+                        <button onclick="lihatBuktiAdmin('${fotoLink}')" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 py-1 px-2 rounded-lg text-[9px] font-bold transition shadow-sm inline-flex items-center gap-1 whitespace-nowrap"><i class="fas fa-image"></i> Foto</button>
                         <a href="${mapsLink}" target="_blank" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white border border-emerald-200 py-1 px-2 rounded-lg text-[9px] font-bold transition shadow-sm inline-flex items-center gap-1 whitespace-nowrap"><i class="fas fa-map-marker-alt"></i> Map</a>
                     </div>
                 </div>`;
@@ -185,4 +185,4 @@ async function downloadPDFRekapSiswa() {
         btn.innerHTML = originalTxt; btn.disabled = false;
     }
 }
-
+
