@@ -21,29 +21,61 @@ function initTenant() {
     }
 
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // 1. Prioritas Utama: Parameter langsung di URL (?exec=...)
+        const paramExec = urlParams.get('exec');
+        if (paramExec && paramExec.startsWith('http')) {
+            API_URL = paramExec;
+            localStorage.setItem('customSyncLink', paramExec);
+            return;
+        }
+
+        // 2. Link Exec Kustom yang Tersimpan di Pengaturan Sekolah
         const customUrl = localStorage.getItem('customSyncLink') || localStorage.getItem('api_url') || localStorage.getItem('sipresdir_custom_api_url') || localStorage.getItem('sipresdir_custom_sync_link');
         if (customUrl && customUrl.startsWith('http')) {
             API_URL = customUrl;
             return;
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const tenantId = urlParams.get('id') || localStorage.getItem('activeTenant') || 'default';
-
-        if (TENANT_CONFIG[tenantId]) {
-            API_URL = TENANT_CONFIG[tenantId];
-            localStorage.setItem('activeTenant', tenantId);
-        } else if (TENANT_CONFIG['default']) {
-            API_URL = TENANT_CONFIG['default'];
-            console.warn("Kode tenant tidak ditemukan, fallback ke default");
-        } else {
-            const firstKey = Object.keys(TENANT_CONFIG)[0];
-            API_URL = TENANT_CONFIG[firstKey];
+        // 3. Berdasarkan Parameter Kode Tenant (?id=...)
+        const paramTenant = urlParams.get('id');
+        if (paramTenant) {
+            const cleanTenant = paramTenant.trim().toLowerCase();
+            if (TENANT_CONFIG[cleanTenant]) {
+                API_URL = TENANT_CONFIG[cleanTenant];
+            } else {
+                API_URL = TENANT_CONFIG['default'] || DEFAULT_API_URL;
+            }
+            localStorage.setItem('activeTenant', cleanTenant);
+            return;
         }
 
+        // 4. Deteksi Otomatis dari Nama Sekolah yang Tersimpan di Pengaturan
+        const savedTenant = localStorage.getItem('activeTenant');
+        if (savedTenant && TENANT_CONFIG[savedTenant]) {
+            API_URL = TENANT_CONFIG[savedTenant];
+            return;
+        }
+
+        try {
+            const cachedConfigs = JSON.parse(localStorage.getItem('app_configs') || localStorage.getItem('appConfigCache') || '{}');
+            const schoolName = cachedConfigs.namasekolah || localStorage.getItem('namasekolah') || '';
+            if (schoolName) {
+                const schoolSlug = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (TENANT_CONFIG[schoolSlug]) {
+                    API_URL = TENANT_CONFIG[schoolSlug];
+                    localStorage.setItem('activeTenant', schoolSlug);
+                    return;
+                }
+            }
+        } catch (e) { }
+
+        // 5. Fallback Default
+        API_URL = TENANT_CONFIG['default'] || DEFAULT_API_URL;
         new URL(API_URL);
     } catch (error) {
-        console.warn('Konfigurasi tenant tidak valid, dipaksa ke URL default.', error);
+        console.warn('Konfigurasi tenant tidak valid, fallback ke URL default.', error);
         API_URL = DEFAULT_API_URL;
     }
 }
