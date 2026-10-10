@@ -21,6 +21,12 @@ function initTenant() {
     }
 
     try {
+        const customUrl = localStorage.getItem('customSyncLink') || localStorage.getItem('api_url') || localStorage.getItem('sipresdir_custom_api_url') || localStorage.getItem('sipresdir_custom_sync_link');
+        if (customUrl && customUrl.startsWith('http')) {
+            API_URL = customUrl;
+            return;
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const tenantId = urlParams.get('id') || localStorage.getItem('activeTenant') || 'default';
 
@@ -952,21 +958,37 @@ function updatePaginationUI(type, startIdx, currentCount, total, currentPage, to
 // OTENTIKASI & SESI (LOGIN/LOGOUT)
 // ============================================================
 function switchLoginTab(tab) {
-    document.getElementById('loginError').classList.add('hidden');
+    const errEl = document.getElementById('loginError');
+    if (errEl) errEl.classList.add('hidden');
     const btnSiswa = document.getElementById('btnSiswaTab');
     const btnAdmin = document.getElementById('btnAdminTab');
-    const active = "bg-white text-indigo-600 shadow-sm";
-    const inactive = "text-gray-500 hover:text-gray-700 hover:bg-gray-200";
+    const active = "flex-1 py-2.5 lg:py-3 text-sm font-bold rounded-lg shadow-md bg-white/20 text-white ring-1 ring-white/30 transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-sm";
+    const inactive = "flex-1 py-2.5 lg:py-3 text-sm font-medium rounded-lg text-indigo-100 hover:text-white hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2";
 
-    btnSiswa.className = `flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${tab === 'siswa' ? active : inactive}`;
-    btnAdmin.className = `flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${tab === 'admin' ? active : inactive}`;
+    if (btnSiswa) btnSiswa.className = tab === 'siswa' ? active : inactive;
+    if (btnAdmin) btnAdmin.className = tab === 'admin' ? active : inactive;
+
+    const formAdmin = document.getElementById('formAdminLogin');
+    const formSiswa = document.getElementById('formSiswaLogin');
+    const inputNisn = document.getElementById('nisn');
+    const inputPassSiswa = document.getElementById('passwordSiswa');
+    const inputUser = document.getElementById('username');
+    const inputPass = document.getElementById('password');
 
     if (tab === 'admin') {
-        document.getElementById('formAdminLogin').classList.remove('hidden');
-        document.getElementById('formSiswaLogin').classList.add('hidden');
+        if (formAdmin) formAdmin.classList.remove('hidden');
+        if (formSiswa) formSiswa.classList.add('hidden');
+        if (inputNisn) inputNisn.disabled = true;
+        if (inputPassSiswa) inputPassSiswa.disabled = true;
+        if (inputUser) { inputUser.disabled = false; inputUser.focus(); }
+        if (inputPass) inputPass.disabled = false;
     } else {
-        document.getElementById('formAdminLogin').classList.add('hidden');
-        document.getElementById('formSiswaLogin').classList.remove('hidden');
+        if (formAdmin) formAdmin.classList.add('hidden');
+        if (formSiswa) formSiswa.classList.remove('hidden');
+        if (inputNisn) { inputNisn.disabled = false; inputNisn.focus(); }
+        if (inputPassSiswa) inputPassSiswa.disabled = false;
+        if (inputUser) inputUser.disabled = true;
+        if (inputPass) inputPass.disabled = true;
     }
 }
 
@@ -1113,15 +1135,42 @@ window.toggleTablePass = function (passId, iconId, password) {
 }
 
 async function handleLogin(event) {
-    event.preventDefault();
-    showLoading();
+    if (event && event.preventDefault) event.preventDefault();
 
-    const isSiswa = !document.getElementById('formSiswaLogin').classList.contains('hidden');
+    const formSiswa = document.getElementById('formSiswaLogin');
+    const isSiswa = formSiswa ? !formSiswa.classList.contains('hidden') : true;
 
-    const nisnVal = isSiswa ? document.getElementById('nisn').value : "";
-    const userVal = isSiswa ? "" : document.getElementById('username').value;
-    const passVal = isSiswa ? document.getElementById('passwordSiswa').value : document.getElementById('password').value;
+    const nisnInput = document.getElementById('nisn');
+    const userInput = document.getElementById('username');
+    const passSiswaInput = document.getElementById('passwordSiswa');
+    const passInput = document.getElementById('password');
+
+    const nisnVal = (nisnInput ? nisnInput.value : "").trim();
+    const userVal = (userInput ? userInput.value : "").trim();
+    const passVal = isSiswa ? (passSiswaInput ? passSiswaInput.value : "") : (passInput ? passInput.value : "");
+
+    if (isSiswa) {
+        if (!nisnVal || !passVal) {
+            showAlert('warning', 'Silakan masukkan NISN dan Password Siswa.');
+            return;
+        }
+    } else {
+        if (!userVal || !passVal) {
+            showAlert('warning', 'Silakan masukkan Username dan Password.');
+            return;
+        }
+    }
+
     localStorage.setItem(isSiswa ? 'lastLoginNisn' : 'lastLoginUsername', isSiswa ? nisnVal : userVal);
+
+    const btnSubmit = document.getElementById('btnSubmitLogin');
+    const btnText = document.getElementById('btnSubmitLoginText');
+    const btnIcon = document.getElementById('btnSubmitLoginIcon');
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnText) btnText.textContent = 'MEMPROSES...';
+    if (btnIcon) btnIcon.className = 'fas fa-spinner fa-spin';
+
+    showLoading();
 
     try {
         let result;
@@ -1129,7 +1178,7 @@ async function handleLogin(event) {
             // Mode Offline: Siswa dan Guru via SQLite, Admin via config-offline.json
             if (isSiswa) {
                 const res = await window.electronAPI.queryDB('login', { nisn: nisnVal, password: passVal, role: 'siswa' });
-                if (res.success) {
+                if (res && res.success) {
                     result = {
                         ...res,
                         success: true,
@@ -1143,7 +1192,7 @@ async function handleLogin(event) {
                         tanggalLahir: res.tanggalLahir || res.tanggal_lahir || ''
                     };
                 } else {
-                    result = { success: false, message: res.message };
+                    result = { success: false, message: (res && res.message) || 'NISN atau password salah.' };
                 }
             } else {
                 // Untuk admin atau guru, cek config offline dulu
@@ -1203,37 +1252,44 @@ async function handleLogin(event) {
 
         hideLoading();
 
-        if (result.success) {
+        if (result && result.success) {
             currentUser = result;
             setSession(result);
             if (!(await requirePasswordChange(result))) return;
-            document.getElementById('loginPage').classList.add('hidden');
-            document.getElementById('dashboardContainer').classList.remove('hidden');
+            document.getElementById('loginPage')?.classList.add('hidden');
+            document.getElementById('dashboardContainer')?.classList.remove('hidden');
             initDashboard();
             void preloadRoleViews(result.role);
             void initAppConfigs();
         } else {
             const errorDiv = document.getElementById('loginError');
+            const errMsg = (result && result.message) || 'Username atau password salah.';
             if (errorDiv) {
-                document.getElementById('errorText').textContent = result.message;
+                const errText = document.getElementById('errorText');
+                if (errText) errText.textContent = errMsg;
                 errorDiv.classList.remove('hidden');
                 setTimeout(() => errorDiv.classList.add('hidden'), 5000);
             }
             Swal.fire({
                 icon: 'error',
                 title: 'Login Gagal',
-                text: result.message || 'Username atau password salah.',
+                text: errMsg,
                 confirmButtonColor: '#3085d6'
             });
         }
     } catch (error) {
         hideLoading();
+        console.error("Login catch error:", error);
         Swal.fire({
             icon: 'error',
             title: 'Koneksi Gagal',
-            text: 'Gagal terhubung ke server: ' + error.toString(),
+            text: 'Gagal terhubung ke server: ' + (error.message || error.toString()),
             confirmButtonColor: '#3085d6'
         });
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnText) btnText.textContent = 'LOGIN';
+        if (btnIcon) btnIcon.className = 'fas fa-arrow-right-long';
     }
 }
 
