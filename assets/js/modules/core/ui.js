@@ -127,8 +127,8 @@ async function openSyncModal() {
 
         if (customLink) {
             input.value = customLink;
-        } else if (config && config.link_exec_sync) {
-            input.value = config.link_exec_sync;
+        } else if (config && (config.link_exec_sync || config.OFFLINE_EXEC_LINK || config.gasUrl || config.linkExec)) {
+            input.value = config.link_exec_sync || config.OFFLINE_EXEC_LINK || config.gasUrl || config.linkExec;
         }
 
         const modal = document.getElementById('syncModal');
@@ -223,9 +223,10 @@ async function executeSync() {
         updateProgress('step-auth', 'success', 'Autentikasi berhasil.');
 
         updateProgress('step-transfer', 'loading', 'Mengunggah & mengunduh data ke server...');
+        const syncPayload = prepRes.data || prepRes.syncData || {};
         const response = await fetch(newLink, {
             method: 'POST',
-            body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: prepRes.data }),
+            body: JSON.stringify({ action: 'syncData', token: onlineToken, payload: syncPayload }),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
         const result = await response.json();
@@ -237,17 +238,33 @@ async function executeSync() {
         if (!procRes.success) throw new Error('Gagal memproses respons server: ' + procRes.message);
         updateProgress('step-process', 'success', 'Pemrosesan data lokal selesai.');
 
+        // Step Unduh Foto WFH & Surat Izin ke Penyimpanan Laptop
+        updateProgress('step-cache-img', 'loading', 'Mengunduh foto WFH & surat izin untuk akses offline...');
+        let cachedStats = null;
+        try {
+            cachedStats = await window.electronAPI.queryDB('cacheAllBuktiImages');
+            if (cachedStats && cachedStats.downloaded > 0) {
+                updateProgress('step-cache-img', 'success', `${cachedStats.downloaded} file bukti baru berhasil diunduh ke laptop.`);
+            } else {
+                updateProgress('step-cache-img', 'success', 'Semua file bukti foto & surat izin tersimpan di laptop.');
+            }
+        } catch (imgErr) {
+            console.warn('Gagal cache gambar bukti:', imgErr);
+            updateProgress('step-cache-img', 'warning', 'Penyimpanan bukti offline dilewati.');
+        }
+
         const counts = result.counts || {};
         const localCounts = procRes.localCounts || {};
+        const totalCached = cachedStats?.totalCached || '-';
 
         let summaryDiv = document.createElement('div');
         summaryDiv.className = 'mt-3 p-3 bg-green-50 border border-green-200 rounded text-green-800 text-sm font-semibold';
-        summaryDiv.innerHTML = `✅ Sinkronisasi berhasil menyeluruh!<br/><span class="text-xs font-normal">Siswa: ${counts.siswa ?? localCounts.siswa ?? '-'} | Guru: ${counts.guru ?? localCounts.guru ?? '-'} | Absensi: ${counts.absensi ?? localCounts.absensi ?? '-'} | Konsekuensi: ${counts.jenisKonsekuensi ?? localCounts.jenisKonsekuensi ?? '-'} / riwayat ${counts.riwayatKonsekuensi ?? '-'}</span><br/><span class="text-xs text-green-600">Memuat ulang aplikasi...</span>`;
+        summaryDiv.innerHTML = `✅ Sinkronisasi berhasil menyeluruh!<br/><span class="text-xs font-normal">Siswa: ${counts.siswa ?? localCounts.siswa ?? '-'} | Guru: ${counts.guru ?? localCounts.guru ?? '-'} | Absensi: ${counts.absensi ?? localCounts.absensi ?? '-'} | Bukti Offline: ${totalCached} file</span><br/><span class="text-xs text-green-600">Memuat ulang aplikasi...</span>`;
         statusDiv.appendChild(summaryDiv);
 
         setTimeout(() => {
             window.location.reload();
-        }, 2000);
+        }, 2200);
 
     } catch (error) {
         updateProgress('step-error', 'error', `Sinkronisasi dihentikan: ${error.message}`);
@@ -429,12 +446,41 @@ function refreshData(type) {
 }
 
 
-window.lihatBuktiAdmin = function (nisn) {
-    const url = window.adminBuktiCache && window.adminBuktiCache[nisn];
-    if (url) {
+window.lihatBuktiAdmin = async function (nisnOrUrl) {
+    let rawUrl = (window.adminBuktiCache && window.adminBuktiCache[nisnOrUrl]) || nisnOrUrl;
+    let finalUrl = null;
+    let isOfflineCache = false;
+
+    if (window.electronAPI) {
+        showLoading();
+        try {
+            const cacheRes = await window.electronAPI.queryDB('getBuktiImage', {
+                url: typeof rawUrl === 'string' && rawUrl.includes('drive.google.com') ? rawUrl : null,
+                nisn: nisnOrUrl
+            });
+            if (cacheRes && cacheRes.success && cacheRes.dataUrl) {
+                finalUrl = cacheRes.dataUrl;
+                isOfflineCache = true;
+            }
+        } catch (e) {
+            console.warn('Gagal memuat cache bukti lokal:', e);
+        }
+        hideLoading();
+    }
+
+    if (!finalUrl) {
+        finalUrl = rawUrl;
+    }
+
+    if (finalUrl && typeof finalUrl === 'string' && (finalUrl.startsWith('http') || finalUrl.startsWith('data:image'))) {
+        const titleBadge = isOfflineCache
+            ? '<span class="text-xs text-emerald-600 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200"><i class="fas fa-check-circle mr-1"></i> Dibuka dari Laptop (Offline)</span>'
+            : '<span class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200"><i class="fas fa-cloud mr-1"></i> Memuat dari Cloud Google Drive</span>';
+
         Swal.fire({
-            imageUrl: url,
+            imageUrl: finalUrl,
             imageAlt: 'Bukti Dukung',
+            title: titleBadge,
             showConfirmButton: true,
             confirmButtonText: 'Tutup',
             width: 'auto',
@@ -444,7 +490,7 @@ window.lihatBuktiAdmin = function (nisn) {
             }
         });
     } else {
-        showAlert('error', 'Bukti tidak ditemukan.');
+        showAlert('error', 'Bukti foto/surat tidak ditemukan.');
     }
 };
 
