@@ -289,7 +289,7 @@ async function updateConnectionStatus() {
         let pingUrl = '';
         if (window.electronAPI) {
             const config = await window.electronAPI.getOfflineConfig();
-            pingUrl = localStorage.getItem('customSyncLink') || config.link_exec_sync || '';
+            pingUrl = localStorage.getItem('customSyncLink') || config?.link_exec_sync || config?.OFFLINE_EXEC_LINK || config?.gasUrl || config?.linkExec || '';
         } else if (typeof API_URL !== 'undefined') {
             pingUrl = API_URL;
         }
