@@ -1123,18 +1123,48 @@ async function handleLogin(event) {
                     result = { success: false, message: res.message };
                 }
             } else {
-                // Untuk admin atau guru, cek config offline dulu (karena Admin di-hardcode)
+                // Untuk admin atau guru, cek config offline dulu
                 const config = await window.electronAPI.getOfflineConfig();
-                if (config && userVal === config.admin.username && passVal === config.admin.password) {
-                    const res = await window.electronAPI.queryDB('login', { username: userVal, password: passVal, role: 'admin' });
-                    result = res.success ? { ...res, id: 'admin_offline' } : res;
+                if (config && config.admin && userVal === config.admin.username && passVal === config.admin.password) {
+                    result = {
+                        success: true,
+                        role: 'admin',
+                        nama: 'Administrator SiPresDir',
+                        username: userVal,
+                        id: 'admin_offline',
+                        token: 'token_admin_offline'
+                    };
+                } else if (config && config.guru && userVal === config.guru.username && passVal === config.guru.password) {
+                    result = {
+                        success: true,
+                        role: 'guru',
+                        nama: 'Guru Piket SMAN 15 Tebo',
+                        username: userVal,
+                        id: 'gurupiket_offline',
+                        token: 'token_gurupiket_offline'
+                    };
                 } else {
-                    // Kalau bukan admin, coba login sebagai guru via SQLite
+                    // Kalau bukan akun config, coba login via SQLite guru/staff
                     const res = await window.electronAPI.queryDB('login', { username: userVal, password: passVal, role: 'guru' });
-                    if (res.success) {
-                        result = { ...res, success: true, token: res.token, role: 'guru', nama: res.nama, id: res.id, username: res.username, kelas: res.kelas, jenisKelamin: res.jenisKelamin, statusPegawai: res.statusPegawai, mapel: res.mapel, wali_kelas: res.wali_kelas };
+                    if (res && res.success) {
+                        const u = res.user || res;
+                        result = {
+                            ...res,
+                            ...u,
+                            success: true,
+                            role: res.role || u.role || 'guru',
+                            nama: res.nama || u.nama || u.username,
+                            id: res.id || u.id || u.username,
+                            username: res.username || u.username || userVal,
+                            kelas: u.kelas || '',
+                            jenisKelamin: u.jenisKelamin || '',
+                            statusPegawai: u.statusPegawai || '',
+                            mapel: u.mapel || '',
+                            wali_kelas: u.wali_kelas || '',
+                            token: res.token || `token_${u.username}`
+                        };
                     } else {
-                        result = { success: false, message: 'Username atau password salah.' };
+                        result = { success: false, message: (res && res.message) ? res.message : 'Username atau password salah.' };
                     }
                 }
             }
