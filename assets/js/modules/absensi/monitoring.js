@@ -328,22 +328,3 @@ async function changeStatus(nisn, nama, kelas, tanggal, selectElement) {
     }
 }
 
-
-window.lihatBuktiAdmin = function(nisn) {
-    const url = window.adminBuktiCache && window.adminBuktiCache[nisn];
-    if (url) {
-        Swal.fire({
-            imageUrl: url,
-            imageAlt: 'Bukti Dukung',
-            showConfirmButton: true,
-            confirmButtonText: 'Tutup',
-            width: 'auto',
-            customClass: {
-                image: 'max-w-full max-h-[70vh] object-contain rounded shadow-sm border border-gray-200',
-                confirmButton: 'bg-indigo-600 text-white rounded-lg px-4 py-2 font-bold hover:bg-indigo-700 transition'
-            }
-        });
-    } else {
-        showAlert('error', 'Bukti tidak ditemukan.');
-    }
-};
