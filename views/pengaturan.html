@@ -1,0 +1,377 @@
+<div id="view-pengaturan" class="view-section animate-fade-in hidden">
+                    <!-- Tabs Navigation -->
+                    <div class="flex border-b border-gray-200 mb-6 space-x-2 sm:space-x-4 overflow-x-auto scrollbar-hide">
+                        <button type="button" onclick="switchPengaturanTab('umum')" id="btn-tab-umum" class="py-2 px-4 border-b-2 border-indigo-600 text-indigo-600 font-bold text-sm transition-colors flex items-center whitespace-nowrap">
+                            <i class="fas fa-sliders-h mr-2"></i> Pengaturan Umum
+                        </button>
+                        <button type="button" onclick="switchPengaturanTab('keamanan')" id="btn-tab-keamanan" class="py-2 px-4 border-b-2 border-transparent text-gray-500 font-bold text-sm transition-colors hover:text-gray-700 flex items-center whitespace-nowrap">
+                            <i class="fas fa-lock mr-2"></i> Keamanan Akun
+                        </button>
+                        <button type="button" onclick="switchPengaturanTab('sop-hukum')" id="btn-tab-sop-hukum" class="py-2 px-4 border-b-2 border-transparent text-gray-500 font-bold text-sm transition-colors hover:text-gray-700 flex items-center whitespace-nowrap">
+                            <i class="fas fa-file-contract mr-2"></i> SOP & Dasar Hukum
+                        </button>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div>
+                        <div id="offlineSettingsPanel" class="hidden bg-white rounded-xl shadow-sm border border-amber-200 overflow-hidden">
+                            <div class="p-5 border-b border-amber-100 bg-amber-50/70">
+                                <h3 class="font-bold text-gray-800"><i class="fas fa-desktop text-amber-600 mr-2"></i> Kredensial Admin Offline</h3>
+                                <p class="text-xs text-gray-600 mt-1">Pengaturan ini hanya tersedia di aplikasi desktop offline dan terpisah dari akun Spreadsheet online.</p>
+                            </div>
+                            <div class="p-5">
+                                <form id="offlineCredentialsForm" onsubmit="saveOfflineCredentials(event)" class="max-w-xl space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Username Admin Offline</label>
+                                        <input type="text" name="offlineUsername" required readonly autocomplete="username" class="w-full border-gray-300 rounded-lg text-sm p-2.5 bg-gray-100 text-gray-600 cursor-not-allowed">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Password Baru</label>
+                                        <input type="password" name="offlinePassword" required minlength="6" autocomplete="new-password" class="w-full border-gray-300 rounded-lg text-sm p-2.5">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Konfirmasi Password</label>
+                                        <input type="password" name="offlinePasswordConfirm" required minlength="6" autocomplete="new-password" class="w-full border-gray-300 rounded-lg text-sm p-2.5">
+                                    </div>
+                                    <button type="submit" class="w-full bg-amber-600 text-white py-3 rounded-xl text-sm font-bold shadow-md hover:bg-amber-700 transition"><i class="fas fa-save mr-2"></i> Simpan Kredensial Offline</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Tab Pengaturan Umum -->
+                        <div id="tab-umum" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+                                <h3 class="font-bold text-gray-800"><i class="fas fa-sliders-h text-indigo-600 mr-2"></i> Pengaturan Umum</h3>
+                                <p class="text-xs text-gray-500 mt-1">Ubah data identitas sekolah.</p>
+                            </div>
+                            <div class="p-5">
+                                <form onsubmit="saveLinkData(event)">
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <!-- Kolom Kiri: Data Instansi -->
+                                        <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 h-full">
+                                            <h4 class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-3">
+                                                Data Instansi (Atas)</h4>
+                                            <div class="space-y-3">
+                                                <div><label class="block text-xs font-bold text-gray-700 mb-1">Nama Instansi</label><input type="text" name="namaInstansi" placeholder="Misal: PEMERINTAH PROV/KAB...." class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
+                                                <div><label class="block text-xs font-bold text-gray-700 mb-1">Nama OPD/Dinas <span class="font-normal text-gray-400">(Opsional)</span></label><input type="text" name="namaOpd" placeholder="Nama OPD atau Dinas" class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-700 mb-1">Logo
+                                                        Instansi</label>
+                                                    <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-200">
+                                                        <div class="relative shrink-0"><img id="previewLogoInstansiSetting" src="" class="w-16 h-16 rounded-lg border border-gray-300 object-contain bg-gray-50 shadow-sm" alt="Logo"><button type="button" onclick="clearLogo('instansi')" class="hidden absolute -top-2 -right-2 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px]" id="clearLogoInstansi"><i class="fas fa-times"></i></button></div>
+                                                        <div class="flex-1">
+                                                            <input type="file" id="inputLogoInstansiFile" accept="image/png, image/jpeg, image/jpg" class="w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 transition">
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" name="logoInstansi" id="finalLogoInstansiData">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Kolom Kanan: Data Sekolah -->
+                                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 h-full">
+                                            <h4 class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-3">
+                                                Data Sekolah (Bawah)</h4>
+                                            <div class="space-y-3">
+                                                <div><label class="block text-xs font-bold text-gray-700 mb-1">Nama
+                                                        Sekolah</label><input type="text" name="namasekolah" class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
+                                                <div><label class="block text-xs font-bold text-gray-700 mb-1">Alamat
+                                                        Lengkap</label><input type="text" name="alamat" placeholder="Jalan / Kabupaten / Provinsi" class="w-full border-gray-300 rounded-lg text-sm p-2.5"></div>
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-700 mb-1">Logo
+                                                        Sekolah</label>
+                                                    <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-200">
+                                                        <div class="relative shrink-0"><img id="previewLogoSetting" src="" class="w-16 h-16 rounded-lg border border-gray-300 object-contain bg-gray-50 shadow-sm" alt="Logo"><button type="button" onclick="clearLogo('sekolah')" class="hidden absolute -top-2 -right-2 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px]" id="clearLogoSekolah"><i class="fas fa-times"></i></button></div>
+                                                        <div class="flex-1">
+                                                            <input type="file" id="inputLogoFile" accept="image/png, image/jpeg, image/jpg" class="w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-700 hover:file:bg-emerald-200 transition">
+                                                        </div>
+                                                    </div>
+                                                    <input type="hidden" name="logo" id="finalLogoData">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                                        <div class="space-y-4">
+                                                <div><label class="block text-xs font-bold text-gray-700 mb-1">No. Telepon/HP Sekolah</label><input type="tel" name="teleponSekolah" placeholder="08xxxxxxxxxx" class="w-full border-gray-300 rounded-lg text-sm p-2.5 bg-gray-50"></div>
+                                                <div><label class="block text-xs font-bold text-gray-700 mb-1">Email Sekolah</label><input type="email" name="emailSekolah" placeholder="sekolah@contoh.sch.id" class="w-full border-gray-300 rounded-lg text-sm p-2.5 bg-gray-50"></div>
+                                            <div><label class="block text-xs font-bold text-gray-700 mb-1">Website</label><input type="text" name="website" class="w-full border-gray-300 rounded-lg text-sm p-2.5 bg-gray-50">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Running Text</label>
+                                            <textarea name="runningtext" class="w-full border-gray-300 rounded-lg text-sm p-2.5 bg-gray-50" rows="3"></textarea>
+                                            <label class="block text-xs font-bold text-gray-700 mt-3 mb-1">Warna Gradient</label>
+                                            <div class="grid grid-cols-4 gap-2">
+                                                <label class="flex items-center gap-2 text-[10px] text-gray-500">Warna 1<input type="color" name="gradient1" value="#6366f1" class="w-full h-9 rounded cursor-pointer"></label>
+                                                <label class="flex items-center gap-2 text-[10px] text-gray-500">Warna 2<input type="color" name="gradient2" value="#a855f7" class="w-full h-9 rounded cursor-pointer"></label>
+                                                <label class="flex items-center gap-2 text-[10px] text-gray-500">Warna 3<input type="color" name="gradient3" value="#3b82f6" class="w-full h-9 rounded cursor-pointer"></label>
+                                                <label class="flex items-center gap-2 text-[10px] text-gray-500">Warna 4<input type="color" name="gradient4" value="#ec4899" class="w-full h-9 rounded cursor-pointer"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" id="btnSaveLink" class="w-full mt-6 bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition transform active:scale-95"><i class="fas fa-save mr-2"></i> Simpan Perubahan</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Tab Keamanan Akun -->
+                        <div id="tab-keamanan" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-fit">
+                            <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+                                <h3 class="font-bold text-gray-800"><i class="fas fa-lock text-rose-600 mr-2"></i>
+                                    Keamanan Akun</h3>
+                                <p class="text-xs text-gray-500 mt-1">Ganti password administrator.</p>
+                            </div>
+                            <div class="p-5">
+                                <!-- Panel Admin Online (Hanya tampil di Web Online, otomatis disembunyikan di versi Desktop) -->
+                                <div id="onlineAdminPanel" class="online-only-settings mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 mb-3"><i class="fas fa-user-shield mr-2"></i>Admin Online</h4>
+                                    <form onsubmit="changeAdminPass(event)" class="space-y-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Username Admin</label>
+                                            <input id="onlineAdminUsername" type="text" readonly value="admin" class="w-full border-gray-300 rounded-lg text-sm p-2.5 bg-white text-gray-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Password Baru</label>
+                                            <div class="relative">
+                                                <input type="password" id="onlineAdminNewPass" name="newPass" required minlength="6" autocomplete="new-password" placeholder="Minimal 6 karakter" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 focus:ring-rose-500 focus:border-rose-500 bg-white">
+                                                <button type="button" onclick="toggleInputPass('onlineAdminNewPass', 'iconOnlineAdminNewPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconOnlineAdminNewPass"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1">Konfirmasi Password Baru</label>
+                                            <div class="relative">
+                                                <input type="password" id="onlineAdminConfirmPass" name="confirmPass" required minlength="6" autocomplete="new-password" placeholder="Ulangi password baru" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 focus:ring-rose-500 focus:border-rose-500 bg-white">
+                                                <button type="button" onclick="toggleInputPass('onlineAdminConfirmPass', 'iconOnlineAdminConfirmPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconOnlineAdminConfirmPass"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <button type="submit" id="btnChangePass" class="w-full bg-rose-600 text-white py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-rose-700 transition"><i class="fas fa-key mr-2"></i>Simpan Password Baru</button>
+                                    </form>
+                                </div>
+
+                                <!-- Panel Akun Offline (Tampil khusus di versi Desktop Offline) -->
+                                <form id="offlineAccountsForm" class="offline-only-settings hidden mb-6 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-amber-700 mb-3"><i class="fas fa-desktop mr-2"></i>Akun Offline</h4>
+                                    <div class="offline-only-settings hidden mb-4 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3">
+                                        <h5 class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 mb-2"><i class="fas fa-link mr-2"></i>Link Exec Sinkronisasi</h5>
+                                        <div class="flex gap-2">
+                                            <input id="syncExecReadonly" type="text" readonly class="min-w-0 flex-1 border-gray-300 rounded-lg text-sm p-2.5 bg-white text-gray-600">
+                                            <button type="button" onclick="copySyncExecLink()" class="shrink-0 bg-indigo-600 text-white px-3 rounded-lg font-bold" title="Salin link"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div>
+                                            <p class="text-[10px] font-bold uppercase text-amber-700 mb-2"><i class="fas fa-user-shield mr-1"></i>Admin Offline</p>
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Username Admin</label>
+                                            <input type="text" name="offlineUsername" id="offlineUsername" required readonly placeholder="Username admin" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2 bg-gray-100 text-gray-700 cursor-not-allowed">
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Password Admin Bawaan</label>
+                                            <div class="relative mb-2">
+                                                <input type="password" name="offlinePassword" id="offlinePassword" readonly placeholder="Password bawaan" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 bg-gray-100 text-gray-700 font-mono cursor-not-allowed">
+                                                <button type="button" onclick="toggleInputPass('offlinePassword', 'iconOfflineAdminPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-800 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconOfflineAdminPass"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-bold uppercase text-amber-700 mb-2"><i class="fas fa-user-tie mr-1"></i>Guru Piket Offline</p>
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Username Guru Piket</label>
+                                            <input type="text" name="guruUsername" id="guruUsername" readonly placeholder="Username guru piket" class="w-full border-gray-300 rounded-lg text-sm p-2.5 mb-2 bg-gray-100 text-gray-700 cursor-not-allowed">
+                                            <label class="block text-[11px] font-medium text-gray-600 mb-1">Password Guru Piket Bawaan</label>
+                                            <div class="relative mb-2">
+                                                <input type="password" name="guruPassword" id="guruPassword" readonly placeholder="Password bawaan" class="w-full border-gray-300 rounded-lg text-sm p-2.5 pr-10 bg-gray-100 text-gray-700 font-mono cursor-not-allowed">
+                                                <button type="button" onclick="toggleInputPass('guruPassword', 'iconGuruPass')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-800 focus:outline-none" title="Lihat / Sembunyikan Password">
+                                                    <i class="fas fa-eye text-sm" id="iconGuruPass"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 p-3 bg-amber-100/70 rounded-xl border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
+                                        <i class="fas fa-info-circle text-amber-600 text-base shrink-0"></i>
+                                        <span>Kredensial akun offline disetel bawaan secara aman (klik ikon mata <i class="fas fa-eye text-amber-700 mx-1"></i> untuk melihat password).</span>
+                                    </div>
+                                </form>
+                                <div id="backupRestorePanel" class="mt-8 border-t border-gray-100 pt-6">
+                                    <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-database text-indigo-500 mr-2"></i>Backup &amp; Restore 100% DB
+                                        (JSON)</h4>
+                                    <p class="text-[11px] text-gray-500 mb-4 leading-relaxed">Fitur ini membackup
+                                        <strong>semua data secara utuh</strong> (Master + File Sharding Absensi). Waktu
+                                        proses backup/restore bisa memakan waktu hingga 1-2 menit tergantung besaran
+                                        data.
+                                    </p>
+                                    <div class="flex flex-col gap-3">
+                                        <button type="button" onclick="downloadFullBackupJSON()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 px-4 rounded-xl text-sm transition flex items-center justify-center gap-2 border border-indigo-200">
+                                            <i class="fas fa-download"></i> Download Full Backup
+                                        </button>
+                                        <button type="button" onclick="document.getElementById('fileRestoreJSON').click()" class="bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold py-2 px-4 rounded-xl text-sm transition flex items-center justify-center gap-2 border border-amber-200">
+                                            <i class="fas fa-upload"></i> Restore Full System
+                                        </button>
+                                        <input type="file" id="fileRestoreJSON" accept=".json" class="hidden" onchange="processFullRestoreJSON(this)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab SOP & Dasar Hukum -->
+                        <div id="tab-sop-hukum" class="hidden space-y-6">
+                            <!-- Card 1: Dokumen Standar Operasional Prosedur (SOP) -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50/80 to-purple-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <div>
+                                        <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                            <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm shadow-sm"><i class="fas fa-file-contract"></i></span>
+                                            Dokumen Standar Operasional Prosedur (SOP)
+                                        </h3>
+                                        <p class="text-xs text-gray-500 mt-1">Unggah berkas SOP resmi SiPreSDir dalam format PDF agar dapat diakses oleh seluruh pengguna di halaman depan.</p>
+                                    </div>
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 w-fit">
+                                        <i class="fas fa-shield-alt text-[10px]"></i> Dokumen Resmi Satuan Pendidikan
+                                    </span>
+                                </div>
+
+                                <div class="p-5 space-y-5">
+                                    <!-- Box Status & Pratinjau File Aktif -->
+                                    <div id="sopFileActiveContainer" class="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div class="flex items-center gap-4">
+                                            <div id="sopFileIconContainer" class="w-12 h-14 rounded-xl bg-white border border-blue-200 shadow-sm flex flex-col items-center justify-center text-blue-600 shrink-0">
+                                                <i id="sopFileIcon" class="fas fa-file-word text-xl"></i>
+                                                <span id="sopFileExtText" class="text-[9px] font-bold text-blue-500 mt-0.5">DOCX</span>
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <h4 id="sopActiveFileName" class="font-bold text-sm text-gray-800">Template_Draf_SOP_SiPreSDir.docx</h4>
+                                                    <span id="sopActiveBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">Template Mentah (Word)</span>
+                                                </div>
+                                                <p id="sopActiveMetaInfo" class="text-xs text-gray-500 mt-0.5">Format: Dokumen Word Mentah (.docx) &bull; Belum ada berkas PDF yang diunggah &bull; Silakan unduh untuk diedit, lalu unggah versi PDF di bawah.</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                                            <!-- Tombol Lihat SOP: Hanya aktif & muncul jika berkas PDF sudah diunggah -->
+                                            <button type="button" id="btnLihatSop" onclick="previewSopPdf()" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition active:scale-95">
+                                                <i class="fas fa-eye"></i> Lihat SOP
+                                            </button>
+                                            <!-- Tombol Unduh: Mengunduh template word jika draft, atau mengunduh PDF jika aktif -->
+                                            <button type="button" id="btnUnduhSop" onclick="downloadSopPdf()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition active:scale-95">
+                                                <i id="sopUnduhIcon" class="fas fa-file-word"></i> <span id="sopUnduhText">Unduh Draf Word</span>
+                                            </button>
+                                            <!-- Tombol Unduh Ulang Template Word jika sedang dalam mode PDF aktif -->
+                                            <button type="button" id="btnUnduhTemplateWordAlt" onclick="downloadTemplateWord()" class="hidden bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95" title="Unduh Master Template Word (.docx)">
+                                                <i class="fas fa-file-word text-blue-600"></i> Template Word
+                                            </button>
+                                            <!-- Tombol Hapus: Hanya muncul jika ada berkas PDF kustom -->
+                                            <button type="button" id="btnHapusSop" onclick="hapusSopPdf()" class="hidden bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 transition active:scale-95" title="Hapus Berkas SOP Kustom">
+                                                <i class="fas fa-trash-alt"></i> Hapus
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Form Upload Berkas Baru -->
+                                    <div class="border-t border-gray-100 pt-4">
+                                        <label class="block text-xs font-bold text-gray-700 mb-2">Unggah Dokumen SOP Baru (Format PDF, Maks. 500 KB)</label>
+                                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                                            <div class="relative flex-1 w-full">
+                                                <input type="file" id="inputSopPdf" accept=".pdf,application/pdf" onchange="handleSopFileSelected(event)" class="w-full text-xs text-gray-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition cursor-pointer border border-gray-300 rounded-xl p-1.5 bg-gray-50/50">
+                                            </div>
+                                            <button type="button" id="btnSaveSopPdf" onclick="saveSopPdfFile()" disabled class="w-full sm:w-auto bg-indigo-600 disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-indigo-700 text-white py-2.5 px-6 rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-2 shrink-0">
+                                                <i class="fas fa-upload"></i> Simpan File SOP
+                                            </button>
+                                        </div>
+                                        <p id="sopUploadHint" class="text-[11px] text-gray-400 mt-1.5"><i class="fas fa-info-circle mr-1"></i>Maksimal ukuran file PDF adalah 500 KB. Pada mode desktop offline berkas tersimpan di laptop, dan pada mode online web tersimpan di Google Drive (publik). Sinkronisasi cerdas otomatis menyelaraskan kedua sisi.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card 2: Tabel Daftar Dasar Hukum -->
+                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-emerald-50/80 to-teal-50/50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <div>
+                                        <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                            <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-sm"><i class="fas fa-balance-scale"></i></span>
+                                            Daftar Landasan Regulasi & Dasar Hukum
+                                        </h3>
+                                        <p class="text-xs text-gray-500 mt-1">Landasan hukum operasional tata tertib, sistem skor poin disiplin, dan presensi siswa di SMA Negeri 15 Tebo.</p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" onclick="openModalTambahDasarHukum()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-sm transition active:scale-95">
+                                            <i class="fas fa-plus"></i> Tambah Regulasi
+                                        </button>
+                                        <button type="button" onclick="resetDasarHukumToDefault()" class="bg-white hover:bg-gray-50 text-gray-600 border border-gray-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95" title="Kembalikan ke 11 dasar hukum standar resmi">
+                                            <i class="fas fa-redo-alt text-[10px]"></i> Reset Standar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="p-5">
+                                    <!-- Tabel Responsif Dasar Hukum -->
+                                    <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                                        <table class="w-full text-left text-xs border-collapse">
+                                            <thead>
+                                                <tr class="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
+                                                    <th class="py-3 px-3 text-center w-12">No</th>
+                                                    <th class="py-3 px-3 w-40">Tingkat / Jenis</th>
+                                                    <th class="py-3 px-3 w-48">Nomor & Tahun</th>
+                                                    <th class="py-3 px-4">Tentang / Substansi Regulasi</th>
+                                                    <th class="py-3 px-4">Keterkaitan SiPreSDir</th>
+                                                    <th class="py-3 px-3 text-center w-24">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbodyDasarHukum" class="divide-y divide-gray-100 bg-white">
+                                                <!-- Dimuat secara dinamis melalui renderDasarHukumTable() -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Tambah / Edit Dasar Hukum -->
+                    <div id="modalFormDasarHukum" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in" style="display: none;">
+                        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+                            <div class="p-5 border-b border-gray-100 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between">
+                                <h3 id="modalDasarHukumTitle" class="font-bold text-sm flex items-center gap-2">
+                                    <i class="fas fa-balance-scale"></i> <span>Tambah Dasar Hukum</span>
+                                </h3>
+                                <button type="button" onclick="closeModalDasarHukum()" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                            <form onsubmit="saveDasarHukum(event)" class="p-5 space-y-4 text-xs">
+                                <input type="hidden" id="editDasarHukumIndex" value="-1">
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">Tingkat / Jenis Regulasi</label>
+                                    <select id="inputJenisRegulasi" required class="w-full border-gray-300 rounded-lg p-2.5 text-xs bg-gray-50 focus:bg-white">
+                                        <option value="Undang-Undang">Undang-Undang (UU)</option>
+                                        <option value="Peraturan Pemerintah">Peraturan Pemerintah (PP)</option>
+                                        <option value="Permendikbud">Permendikbud / Permendikbudristek</option>
+                                        <option value="PermenPAN-RB">PermenPAN-RB</option>
+                                        <option value="Peraturan Daerah">Peraturan Daerah (Perda)</option>
+                                        <option value="Keputusan Kepala Sekolah">Keputusan Kepala Sekolah (SK)</option>
+                                        <option value="Tata Tertib Sekolah">Tata Tertib & Kode Etik Sekolah</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">Nomor & Tahun</label>
+                                    <input type="text" id="inputNomorTahun" required placeholder="Contoh: UU No. 20 Tahun 2003" class="w-full border-gray-300 rounded-lg p-2.5 text-xs bg-gray-50 focus:bg-white font-mono">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">Tentang / Perihal</label>
+                                    <textarea id="inputTentang" required rows="2" placeholder="Contoh: Sistem Pendidikan Nasional" class="w-full border-gray-300 rounded-lg p-2.5 text-xs bg-gray-50 focus:bg-white"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">Keterkaitan dengan SiPreSDir</label>
+                                    <textarea id="inputKeterkaitan" required rows="3" placeholder="Contoh: Kewajiban penumbuhan disiplin dan karakter peserta didik..." class="w-full border-gray-300 rounded-lg p-2.5 text-xs bg-gray-50 focus:bg-white"></textarea>
+                                </div>
+                                <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                                    <button type="button" onclick="closeModalDasarHukum()" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 font-bold hover:bg-gray-50 transition">Batal</button>
+                                    <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm">Simpan Regulasi</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>

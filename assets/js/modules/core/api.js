@@ -1,0 +1,1776 @@
+// ============================================================
+// KONFIGURASI API & CORE STATE
+// ============================================================
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/';
+
+// Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
+const TENANT_CONFIG = {
+    // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
+    "sman15tebo": "https://script.google.com/macros/s/AKfycby_AaeZLMTunITSUpaU0r0sM11gZEbQ6c2bHMb3m3k-gP5K6UBivDQFwgOQXlIU4Njv/exec",
+    "sman20tebo": DEFAULT_API_URL,
+    "sekolah3": DEFAULT_API_URL,
+    "default": DEFAULT_API_URL // HARUS ADA!
+};
+
+let API_URL = '';
+function initTenant() {
+    const isElectron = navigator.userAgent.toLowerCase().indexOf('electron/') > -1;
+    if (isElectron) {
+        console.log("Running in Electron mode, menggunakan IPC");
+        return;
+    }
+
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // 1. Prioritas Utama: Parameter langsung di URL (?exec=...)
+        const paramExec = urlParams.get('exec');
+        if (paramExec && paramExec.startsWith('http')) {
+            API_URL = paramExec;
+            localStorage.setItem('customSyncLink', paramExec);
+            return;
+        }
+
+        // 2. Link Exec Kustom yang Tersimpan di Pengaturan Sekolah
+        const customUrl = localStorage.getItem('customSyncLink') || localStorage.getItem('api_url') || localStorage.getItem('sipresdir_custom_api_url') || localStorage.getItem('sipresdir_custom_sync_link');
+        if (customUrl && customUrl.startsWith('http')) {
+            API_URL = customUrl;
+            return;
+        }
+
+        // 3. Berdasarkan Parameter Kode Tenant (?id=...)
+        const paramTenant = urlParams.get('id');
+        if (paramTenant) {
+            const cleanTenant = paramTenant.trim().toLowerCase();
+            if (TENANT_CONFIG[cleanTenant]) {
+                API_URL = TENANT_CONFIG[cleanTenant];
+            } else {
+                API_URL = TENANT_CONFIG['default'] || DEFAULT_API_URL;
+            }
+            localStorage.setItem('activeTenant', cleanTenant);
+            return;
+        }
+
+        // 4. Deteksi Otomatis dari Nama Sekolah yang Tersimpan di Pengaturan
+        const savedTenant = localStorage.getItem('activeTenant');
+        if (savedTenant && TENANT_CONFIG[savedTenant]) {
+            API_URL = TENANT_CONFIG[savedTenant];
+            return;
+        }
+
+        try {
+            const cachedConfigs = JSON.parse(localStorage.getItem('app_configs') || localStorage.getItem('appConfigCache') || '{}');
+            const schoolName = cachedConfigs.namasekolah || localStorage.getItem('namasekolah') || '';
+            if (schoolName) {
+                const schoolSlug = schoolName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (TENANT_CONFIG[schoolSlug]) {
+                    API_URL = TENANT_CONFIG[schoolSlug];
+                    localStorage.setItem('activeTenant', schoolSlug);
+                    return;
+                }
+            }
+        } catch (e) { }
+
+        // 5. Fallback Default
+        API_URL = TENANT_CONFIG['default'] || DEFAULT_API_URL;
+        new URL(API_URL);
+    } catch (error) {
+        console.warn('Konfigurasi tenant tidak valid, fallback ke URL default.', error);
+        API_URL = DEFAULT_API_URL;
+    }
+}
+initTenant();
+
+let currentUser = null,
+    isSidebarOpen = true,
+    appCache = { siswa: null, guru: null },
+    existingClasses = [],
+    guruChartInstance = null,
+    adminChartInstance = null,
+    loadingInterval;
+
+const tableState = {
+    siswa: { fullData: [], filtered: [], limit: 10, page: 1, search: '', classFilter: '' },
+    siswaNonaktif: { fullData: [], filtered: [], limit: 10, page: 1, search: '', classFilter: '' },
+    guru: { fullData: [], filtered: [], limit: 10, page: 1, search: '', classFilter: '' },
+    libur: { fullData: [], filtered: [], limit: 5, page: 1, search: '' },
+    rekap: { fullData: [], filtered: [], limit: 10, page: 1, search: '' },
+    monitoring: { fullData: [], filtered: [], limit: 10, page: 1, search: '', statusFilter: '', classFilter: '', cacheKey: '' },
+    wfh: { fullData: [], filtered: [], limit: 5, page: 1, search: '' },
+    pelanggaran: { fullData: [], filtered: [], limit: 10, page: 1, search: '', kategoriFilter: '' }
+};
+
+// ============================================================
+// FUNGSI UTAMA (API, LOADING, ALERT, MODAL)
+// ============================================================
+function setSession(data) {
+    if (data && typeof data === 'object') {
+        if (!data.expiresAt) {
+            data.expiresAt = Date.now() + (24 * 60 * 60 * 1000); // 24 Jam
+        }
+    }
+    const jsonString = JSON.stringify(data);
+    const obfuscated = btoa(unescape(encodeURIComponent(jsonString)));
+    localStorage.setItem('absensiAppSession', `_sipresdir_${obfuscated}_secure_`);
+}
+
+function getSession() {
+    const stored = localStorage.getItem('absensiAppSession');
+    if (!stored || !stored.startsWith('_sipresdir_') || !stored.endsWith('_secure_')) return null;
+    try {
+        const obfuscated = stored.substring(11, stored.length - 8);
+        return JSON.parse(decodeURIComponent(escape(atob(obfuscated))));
+    } catch (e) { return null; }
+}
+
+let isSessionExpiredAlertOpen = false;
+
+function isSessionErrorMessage(msg) {
+    if (!msg || typeof msg !== 'string') return false;
+    const lower = msg.toLowerCase();
+    return (
+        (lower.includes('sesi') && (lower.includes('berakhir') || lower.includes('habis') || lower.includes('tidak valid') || lower.includes('kadaluarsa') || lower.includes('expired'))) ||
+        lower.includes('token tidak valid') ||
+        lower.includes('session expired') ||
+        lower.includes('session invalid')
+    );
+}
+
+async function handleSessionExpired(customMessage) {
+    if (isSessionExpiredAlertOpen) return;
+    isSessionExpiredAlertOpen = true;
+
+    // Bersihkan sesi & status aktif segera
+    if (window.electronAPI && currentUser?.token) {
+        try { await window.electronAPI.queryDB('logout', { token: currentUser.token }); } catch (_) { }
+    }
+    localStorage.removeItem('absensiAppSession');
+    currentUser = null;
+    if (typeof stopAndBack === 'function') stopAndBack(false);
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Sesi Anda Habis',
+        text: customMessage || 'Sesi anda Habis, silahkan login ulang',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#4F46E5',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: true
+    }).then(async () => {
+        isSessionExpiredAlertOpen = false;
+        await executeLogout();
+    });
+}
+window.handleSessionExpired = handleSessionExpired;
+window.isSessionErrorMessage = isSessionErrorMessage;
+
+async function fetchAPI(action, params = {}) {
+    const payload = { ...params, action, _ts: Date.now() };
+    if (!payload.token) {
+        if (currentUser && currentUser.token) {
+            payload.token = currentUser.token;
+        } else {
+            const sess = typeof getSession === 'function' ? getSession() : null;
+            if (sess && sess.token) payload.token = sess.token;
+        }
+    }
+    let timeoutId;
+    try {
+        if (window.electronAPI) {
+            const dbRes = await window.electronAPI.queryDB(action, payload);
+            if (dbRes && dbRes.success === false && isSessionErrorMessage(dbRes.message)) {
+                handleSessionExpired(dbRes.message);
+            }
+            return dbRes;
+        }
+
+        const endpoint = API_URL || DEFAULT_API_URL;
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            redirect: 'follow',
+            signal: controller.signal
+        });
+
+        const text = await response.text();
+        let jsonRes;
+        try {
+            jsonRes = JSON.parse(text);
+        } catch (e) {
+            console.error("Fetch API Error parsing JSON. Response text:", text);
+            let titleMatch = text.match(/<title>(.*?)<\/title>/i);
+            let title = titleMatch ? titleMatch[1] : "HTML Error";
+            throw new Error(`Server Response Error: [${title}] ${text.substring(0, 80)}...`);
+        }
+
+        if (jsonRes && jsonRes.success === false && isSessionErrorMessage(jsonRes.message)) {
+            handleSessionExpired(jsonRes.message);
+        }
+        return jsonRes;
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        if (isSessionErrorMessage(error.message)) {
+            handleSessionExpired(error.message);
+        }
+        throw error;
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+}
+
+function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    const countdownEl = document.getElementById('loadingCountdown');
+    const textEl = document.getElementById('loadingText');
+
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+
+    if (countdownEl) {
+        let timeLeft = 8;
+        countdownEl.textContent = timeLeft;
+        const parent = countdownEl.parentElement;
+        if (parent) parent.style.display = 'flex';
+
+        clearInterval(loadingInterval);
+        loadingInterval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft > 0) {
+                countdownEl.textContent = timeLeft;
+            } else if (timeLeft === 0) {
+                if (parent) parent.style.display = 'none';
+                if (textEl) {
+                    textEl.innerHTML = 'Sedang memproses data... <br><span class="text-[10px] text-orange-600 font-bold">Tunggu sebentar..</span>';
+                }
+            }
+        }, 1000);
+    }
+
+    if (textEl) {
+        textEl.innerHTML = 'Memproses... <br><span class="text-[10px] text-gray-500 font-normal">Mohon tunggu</span>';
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    clearInterval(loadingInterval);
+}
+
+function showModal(content) {
+    const container = document.getElementById('modalContainer');
+    if (!container) return;
+    container.innerHTML = `<div class="fixed inset-0 z-50 flex items-center justify-center p-4"><div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div><div class="relative w-full max-w-2xl transform transition-all animate-fade-in">${content}</div></div>`;
+}
+
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[character]));
+}
+
+function closeModal() {
+    const container = document.getElementById('modalContainer');
+    if (container) container.innerHTML = '';
+}
+
+function showAlert(type, message) {
+    const text = String(message ?? '');
+    if (typeof isSessionErrorMessage === 'function' && isSessionErrorMessage(text)) {
+        handleSessionExpired(text);
+        return;
+    }
+    const icon = type === 'success' ? 'success' : type === 'warning' ? 'warning' : type === 'info' ? 'info' : 'error';
+
+    if (window.Swal) {
+        Swal.fire({
+            icon,
+            title: type === 'success' ? 'Berhasil' : type === 'warning' ? 'Perhatian' : type === 'info' ? 'Informasi' : 'Terjadi Kesalahan',
+            text,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+    window.alert(text || 'Terjadi kesalahan.');
+}
+window.showAlert = showAlert;
+
+// ============================================================
+// INISIALISASI & KONFIGURASI APP
+// ============================================================
+// Field yang TIDAK boleh masuk localStorage (terlalu besar, menyebabkan silent fail)
+const CONFIG_FIELDS_EXCLUDE_CACHE = ['logo', 'logoInstansi'];
+const BRANDING_CACHE_DB = 'sipresdir-branding-cache';
+const BRANDING_CACHE_STORE = 'branding';
+
+function openBrandingCache() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(BRANDING_CACHE_DB, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(BRANDING_CACHE_STORE)) {
+                request.result.createObjectStore(BRANDING_CACHE_STORE);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Gagal membuka cache logo.'));
+    });
+}
+
+async function readCachedBranding() {
+    if (!window.indexedDB) return null;
+    const db = await openBrandingCache();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(BRANDING_CACHE_STORE, 'readonly');
+        const request = transaction.objectStore(BRANDING_CACHE_STORE).get('logos');
+        request.onsuccess = () => {
+            db.close();
+            resolve(request.result || null);
+        };
+        request.onerror = () => {
+            db.close();
+            reject(request.error || new Error('Gagal membaca cache logo.'));
+        };
+    });
+}
+
+async function cacheBranding(data) {
+    if (!window.indexedDB) return;
+    const branding = {
+        logo: typeof data?.logo === 'string' ? data.logo : '',
+        logoInstansi: typeof data?.logoInstansi === 'string' ? data.logoInstansi : ''
+    };
+
+    const db = await openBrandingCache();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(BRANDING_CACHE_STORE, 'readwrite');
+        transaction.objectStore(BRANDING_CACHE_STORE).put(branding, 'logos');
+        transaction.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        transaction.onerror = () => {
+            db.close();
+            reject(transaction.error || new Error('Gagal menyimpan cache logo.'));
+        };
+        transaction.onabort = () => {
+            db.close();
+            reject(transaction.error || new Error('Penyimpanan cache logo dibatalkan.'));
+        };
+    });
+}
+
+function stripLargeFields(data) {
+    if (!data || typeof data !== 'object') return data;
+    const out = {};
+    Object.entries(data).forEach(([k, v]) => {
+        if (!CONFIG_FIELDS_EXCLUDE_CACHE.includes(k)) out[k] = v;
+    });
+    return out;
+}
+
+async function initAppConfigs() {
+    try {
+        // Load dari cache lokal dulu (tanpa logo besar) agar UI terasa cepat
+        const cachedConfig = window.electronAPI
+            ? (localStorage.getItem('appConfigFullCache') || localStorage.getItem('appConfigCache'))
+            : localStorage.getItem('appConfigCache');
+        let cachedResult = null;
+        if (cachedConfig) {
+            try {
+                cachedResult = JSON.parse(cachedConfig);
+                applyAppConfigToUI(cachedResult);
+            } catch (e) { }
+        }
+
+        if (!window.electronAPI) {
+            try {
+                const cachedBranding = await readCachedBranding();
+                if (cachedBranding) applyAppConfigToUI({ ...cachedResult, ...cachedBranding });
+            } catch (error) {
+                console.warn('Gagal membaca cache logo sekolah:', error);
+            }
+        }
+
+        const settingsResponse = window.electronAPI ? await fetchAPI('getAppConfig') : await fetchAPI('getSettings');
+        const result = settingsResponse && settingsResponse.success && settingsResponse.data
+            ? settingsResponse.data
+            : (settingsResponse && typeof settingsResponse === 'object' && !settingsResponse.message ? settingsResponse : null);
+        if (result) {
+            // Simpan ke cache HANYA field teks (tanpa logo base64 besar)
+            try { localStorage.setItem('appConfigCache', JSON.stringify(stripLargeFields(result))); } catch (e) { console.warn('Cache config gagal:', e); }
+            if (window.electronAPI) {
+                try { localStorage.setItem('appConfigFullCache', JSON.stringify(result)); } catch (e) { console.warn('Cache branding offline gagal:', e); }
+            } else {
+                try { await cacheBranding(result); } catch (error) { console.warn('Gagal menyimpan cache logo sekolah:', error); }
+            }
+            applyAppConfigToUI(result);
+        }
+
+        // Ambil status libur hari ini
+        const statusHari = await fetchAPI('cekWFHToday');
+        if (statusHari) window.appStatusHari = statusHari;
+    } catch (error) {
+        console.error("Gagal memuat konfigurasi aplikasi", error);
+    }
+}
+
+function applyAppConfigToUI(result) {
+    const fallbackLogo = 'assets/img/imgsipresdir.png';
+    const safeConfig = {
+        logo: fallbackLogo,
+        logoInstansi: fallbackLogo,
+        namaInstansi: 'Instansi Pendidikan',
+        namasekolah: 'SiPresDiR Plus',
+        alamat: '',
+        tahun: new Date().getFullYear(),
+        website: '#',
+        runningtext: 'Selamat datang di SiPresDiR Plus',
+        ...(result || {})
+    };
+    safeConfig.logo = typeof safeConfig.logo === 'string' && safeConfig.logo.trim() ? safeConfig.logo : fallbackLogo;
+    safeConfig.logoInstansi = typeof safeConfig.logoInstansi === 'string' && safeConfig.logoInstansi.trim()
+        ? safeConfig.logoInstansi
+        : safeConfig.logo;
+    window.appConfig = safeConfig;
+    applyGradientColors(safeConfig);
+    document.querySelectorAll('.dyn-logo').forEach(el => {
+        if (el.tagName !== 'IMG') return;
+        el.onerror = () => { el.onerror = null; el.src = fallbackLogo; };
+        el.src = safeConfig.logo;
+    });
+    document.querySelectorAll('.dyn-logoInstansi').forEach(el => {
+        if (el.tagName !== 'IMG') return;
+        el.onerror = () => { el.onerror = null; el.src = fallbackLogo; };
+        el.src = safeConfig.logoInstansi;
+    });
+    document.querySelectorAll('.dyn-namaInstansi').forEach(el => el.textContent = safeConfig.namaInstansi);
+    document.querySelectorAll('.dyn-namasekolah').forEach(el => el.textContent = safeConfig.namasekolah);
+    document.querySelectorAll('.dyn-alamat').forEach(el => el.textContent = safeConfig.alamat);
+    document.querySelectorAll('.dyn-website').forEach(el => el.textContent = safeConfig.website);
+    document.querySelectorAll('.dyn-website-link').forEach(el => el.href = (safeConfig.website.startsWith('http') ? safeConfig.website : '#'));
+    document.querySelectorAll('.dyn-runningtext').forEach(el => el.textContent = safeConfig.runningtext);
+    document.querySelectorAll('.dyn-tahun').forEach(el => el.textContent = new Date().getFullYear());
+
+    // Logika Tampilan Template Surat
+    const actContainer = document.getElementById('actionTemplateSuratContainer');
+    const btnLihat = document.getElementById('btnLihatTemplateSurat');
+    if (actContainer && btnLihat) {
+        if (safeConfig.url_template_surat) {
+            actContainer.classList.remove('hidden');
+            btnLihat.href = safeConfig.url_template_surat;
+        } else {
+            actContainer.classList.add('hidden');
+        }
+    }
+}
+
+function applyPengaturanFormData(form, data) {
+    if (!form || !data) {
+        console.warn('applyPengaturanFormData: form or data is missing', { form, data });
+        return;
+    }
+
+    const source = data.data && typeof data.data === 'object' ? data.data : data;
+    const normalized = {
+        namaInstansi: source.namaInstansi ?? source.instansi ?? '',
+        namaOpd: source.namaOpd ?? source.nama_opd ?? '',
+        namasekolah: source.namasekolah ?? source.namaSekolah ?? source.sekolah ?? '',
+        alamat: source.alamat ?? '',
+        teleponSekolah: source.teleponSekolah ?? source.telepon ?? '',
+        emailSekolah: source.emailSekolah ?? source.email ?? '',
+        website: source.website ?? '',
+        runningtext: source.runningtext ?? source.runningText ?? '',
+        logo: source.logo ?? '',
+        logoInstansi: source.logoInstansi ?? source.logo_instansi ?? '',
+        gradient1: source.gradient1 ?? '#6366f1',
+        gradient2: source.gradient2 ?? '#a855f7',
+        gradient3: source.gradient3 ?? '#3b82f6',
+        gradient4: source.gradient4 ?? '#ec4899'
+    };
+
+    // Pastikan kita mencoba querySelector juga jika form.elements gagal
+    ['namaInstansi', 'namaOpd', 'namasekolah', 'alamat', 'teleponSekolah', 'emailSekolah', 'website', 'runningtext'].forEach(name => {
+        let input = form.elements[name];
+        if (!input) input = form.querySelector(`[name="${name}"]`);
+
+        if (input && normalized[name] !== undefined && normalized[name] !== null) {
+            input.value = normalized[name];
+        }
+    });
+
+    ['gradient1', 'gradient2', 'gradient3', 'gradient4'].forEach((name, index) => {
+        let input = form.elements[name];
+        if (!input) input = form.querySelector(`[name="${name}"]`);
+
+        if (input) {
+            input.value = normalized[name] || ['#6366f1', '#a855f7', '#3b82f6', '#ec4899'][index];
+        }
+    });
+
+    const defLogo = 'assets/img/imgsipresdir.png';
+    const logo = normalized.logo;
+    const logoInstansi = normalized.logoInstansi;
+
+    const logoInput = document.getElementById('finalLogoData');
+    const logoPreview = document.getElementById('previewLogoSetting');
+    const instansiInput = document.getElementById('finalLogoInstansiData');
+    const instansiPreview = document.getElementById('previewLogoInstansiSetting');
+
+    if (logoInput) logoInput.value = logo;
+    if (instansiInput) instansiInput.value = logoInstansi;
+
+    if (logoPreview) {
+        logoPreview.onerror = () => { logoPreview.onerror = null; logoPreview.src = defLogo; };
+        logoPreview.src = logo || defLogo;
+    }
+    if (instansiPreview) {
+        instansiPreview.onerror = () => { instansiPreview.onerror = null; instansiPreview.src = defLogo; };
+        instansiPreview.src = logoInstansi || defLogo;
+    }
+
+    updateLogoClearButton('instansi', logoInstansi);
+    updateLogoClearButton('sekolah', logo);
+    applyGradientColors(normalized);
+}
+
+async function loadPengaturan() {
+    stopAndBack(false); setActiveMenu('Pengaturan');
+    await showView('view-pengaturan');
+    setupLogoUploadListeners();
+    const offlinePanel = document.getElementById('offlineSettingsPanel');
+    const onlineTabButtons = [document.getElementById('btn-tab-umum'), document.getElementById('btn-tab-keamanan'), document.getElementById('btn-tab-sop-hukum')];
+    const offlineTabButton = document.getElementById('btn-tab-offline');
+    onlineTabButtons.forEach(el => el && el.classList.remove('hidden'));
+    if (window.electronAPI) {
+        if (offlineTabButton) offlineTabButton.classList.add('hidden');
+        if (offlinePanel) offlinePanel.classList.add('hidden');
+        await loadOfflineSettings();
+    } else {
+        if (offlineTabButton) offlineTabButton.classList.add('hidden');
+        if (offlinePanel) offlinePanel.classList.add('hidden');
+    }
+    if (typeof switchPengaturanTab === 'function') {
+        switchPengaturanTab('umum');
+    }
+    document.querySelectorAll('.offline-only-settings').forEach(el => el.classList.toggle('hidden', !window.electronAPI));
+    document.querySelectorAll('.online-only-settings').forEach(el => el.classList.toggle('hidden', !!window.electronAPI));
+    const securityTab = document.getElementById('tab-keamanan');
+    const offlineForm = document.getElementById('offlineAccountsForm');
+    const onlinePasswordForm = securityTab ? Array.from(securityTab.querySelectorAll('form')).find(form => form.id !== 'offlineAccountsForm') : null;
+    const backupPanel = document.getElementById('backupRestorePanel');
+    if (securityTab && offlineForm && onlinePasswordForm) {
+        if (backupPanel && backupPanel.parentNode === securityTab) securityTab.insertBefore(offlineForm, backupPanel);
+        else if (offlineForm.parentNode !== securityTab) securityTab.appendChild(offlineForm);
+    }
+    const onlineAdminUsername = document.getElementById('onlineAdminUsername');
+    if (onlineAdminUsername) onlineAdminUsername.value = currentUser?.username || 'admin';
+    let generalTab = document.getElementById('tab-umum');
+    if (!generalTab) {
+        const target = document.getElementById('view-pengaturan');
+        const html = await loadHTML('view-pengaturan');
+        if (target) target.innerHTML = normalizeViewHTML('view-pengaturan', html);
+        generalTab = document.getElementById('tab-umum');
+    }
+    let form = generalTab ? generalTab.querySelector('form') : null;
+    for (let attempt = 0; !form && attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const currentGeneralTab = document.getElementById('tab-umum');
+        form = currentGeneralTab ? currentGeneralTab.querySelector('form') : null;
+    }
+    const token = currentUser ? currentUser.token : null;
+    if (!form) {
+        showAlert('error', 'Form pengaturan umum belum siap. Silakan buka ulang menu Pengaturan.');
+        return;
+    }
+    try {
+        // Baca cache teks (tanpa logo) dari localStorage sebagai tampilan awal cepat
+        const rawCache1 = localStorage.getItem('app_configs');
+        const rawCache2 = localStorage.getItem('appConfigCache');
+        let mergedCacheData = {};
+        if (rawCache2) { try { mergedCacheData = { ...mergedCacheData, ...JSON.parse(rawCache2) }; } catch (e) { } }
+        if (rawCache1) { try { mergedCacheData = { ...mergedCacheData, ...JSON.parse(rawCache1) }; } catch (e) { } }
+        if (!window.electronAPI) {
+            try {
+                const cachedBranding = await readCachedBranding();
+                if (cachedBranding) mergedCacheData = { ...mergedCacheData, ...cachedBranding };
+            } catch (error) {
+                console.warn('Gagal membaca cache logo untuk pengaturan:', error);
+            }
+        }
+        if (Object.keys(mergedCacheData).length > 0) {
+            applyPengaturanFormData(form, mergedCacheData);
+        }
+
+        // Selalu fetch dari database/server untuk mendapatkan data LENGKAP termasuk logo
+        const token = currentUser ? currentUser.token : null;
+        const res = window.electronAPI ? await fetchAPI('getAppConfig') : await fetchAPI('getLinkSettings', { token: token });
+
+        let settingsData = null;
+        if (res && res.success === true && res.data) {
+            settingsData = res.data;
+        } else if (res && typeof res === 'object' && !res.message && res.namasekolah !== undefined) {
+            // Response langsung berupa object data (tanpa wrapper)
+            settingsData = res;
+        }
+
+        // Handle jika backend mereturn Array
+        if (Array.isArray(settingsData) && settingsData.length > 0) {
+            settingsData = settingsData[0];
+        }
+
+        if (settingsData && typeof settingsData === 'object') {
+            // finalSettings = gabungan cache teks + data segar dari server (termasuk logo)
+            const finalSettings = { ...mergedCacheData, ...settingsData };
+            // Simpan ke cache HANYA field teks (logo tidak disimpan karena bisa ratusan KB)
+            try {
+                const cacheOnly = stripLargeFields(finalSettings);
+                localStorage.setItem('app_configs', JSON.stringify(cacheOnly));
+                localStorage.setItem('appConfigCache', JSON.stringify(cacheOnly));
+            } catch (e) { console.warn('Gagal simpan cache pengaturan:', e); }
+            // Render form dengan data LENGKAP (termasuk logo dari server)
+            applyPengaturanFormData(form, finalSettings);
+            if (!window.electronAPI) {
+                try { await cacheBranding(finalSettings); } catch (error) { console.warn('Gagal menyimpan cache logo dari server:', error); }
+            }
+            console.info('[Pengaturan] Form berhasil diisi', Object.keys(finalSettings));
+        } else if (res && res.success === false) {
+            console.warn('loadPengaturan: server error -', res.message);
+            showAlert('error', res.message || 'Data pengaturan gagal dimuat.');
+            if (Object.keys(mergedCacheData).length > 0) {
+                applyPengaturanFormData(form, mergedCacheData);
+            }
+        } else {
+            console.warn('[Pengaturan] Respons tidak berisi data pengaturan', res);
+        }
+    } catch (e) {
+        console.error('Gagal memuat pengaturan umum:', e);
+        showAlert('error', 'Pengaturan umum gagal dimuat: ' + (e.message || e));
+    }
+}
+
+async function loadOfflineSettings() {
+    if (!window.electronAPI) return;
+    try {
+        const config = await window.electronAPI.getOfflineConfig();
+        const form = document.getElementById('offlineAccountsForm');
+        if (form && config) {
+            const adminUser = config.admin?.username || config.username || 'admin-sman15tebo';
+            const guruUser = config.guru?.username || 'gurupiket';
+
+            if (form.elements.offlineUsername) form.elements.offlineUsername.value = adminUser;
+            if (form.elements.guruUsername) form.elements.guruUsername.value = guruUser;
+            if (form.elements.offlinePassword) form.elements.offlinePassword.value = '';
+            if (form.elements.guruPassword) form.elements.guruPassword.value = '';
+        }
+        const link = localStorage.getItem('customSyncLink') || config?.OFFLINE_EXEC_LINK || '';
+        const linkInput = document.getElementById('syncExecReadonly');
+        if (linkInput && link) {
+            linkInput.value = link;
+        }
+    } catch (error) {
+        console.warn('Konfigurasi offline tidak dapat dibaca:', error);
+    }
+}
+
+async function saveOfflineCredentials(event) {
+    event.preventDefault();
+    if (!window.electronAPI) return;
+    const form = event.target;
+    const username = form.elements.offlineUsername.value.trim();
+    const password = form.elements.offlinePassword.value;
+    const confirmation = form.elements.offlinePasswordConfirm.value;
+    if (password.length < 6) {
+        showAlert('error', 'Password admin offline minimal 6 karakter.');
+        return;
+    }
+    if (password !== confirmation) {
+        showAlert('error', 'Konfirmasi password tidak sama.');
+        return;
+    }
+    showLoading();
+    try {
+        const result = await window.electronAPI.saveOfflineConfig({ admin: { username, password } }, currentUser?.token);
+        hideLoading();
+        if (result.success) {
+            form.elements.offlinePassword.value = '';
+            form.elements.offlinePasswordConfirm.value = '';
+            showAlert('success', result.message);
+        } else {
+            showAlert('error', result.message);
+        }
+    } catch (error) {
+        hideLoading();
+        showAlert('error', 'Kredensial offline gagal disimpan.');
+    }
+}
+
+window.saveOfflineCredentials = saveOfflineCredentials;
+
+async function saveOfflineAccounts(event) {
+    event.preventDefault();
+    if (!window.electronAPI) return;
+    const form = event.target;
+    const username = form.elements.offlineUsername.value.trim();
+    const password = form.elements.offlinePassword.value;
+    const confirmation = form.elements.offlinePasswordConfirm.value;
+    const guruUsername = form.elements.guruUsername.value.trim();
+    const guruPassword = form.elements.guruPassword.value;
+    if (!username || (!password && !guruPassword && !guruUsername)) {
+        showAlert('warning', 'Isi data akun offline yang ingin diubah.');
+        return;
+    }
+    if (password && (password.length < 6 || password !== confirmation)) {
+        showAlert('error', 'Password admin offline minimal 6 karakter dan konfirmasinya harus sama.');
+        return;
+    }
+    if (guruPassword && guruPassword.length < 6) {
+        showAlert('error', 'Password guru piket offline minimal 6 karakter.');
+        return;
+    }
+    try {
+        const updates = { admin: { username }, guru: { username: guruUsername } };
+        if (password) updates.admin.password = password;
+        if (guruPassword) updates.guru.password = guruPassword;
+        const result = await window.electronAPI.saveOfflineConfig(updates, currentUser?.token);
+        if (result.success) {
+            form.elements.offlinePassword.value = '';
+            form.elements.offlinePasswordConfirm.value = '';
+            form.elements.guruPassword.value = '';
+            showAlert('success', result.message);
+        } else showAlert('error', result.message);
+    } catch (error) {
+        showAlert('error', error.message || error);
+    }
+}
+
+async function copySyncExecLink() {
+    const input = document.getElementById('syncExecReadonly');
+    if (!input || !input.value) return showAlert('warning', 'Link Exec belum tersedia.');
+    try {
+        await navigator.clipboard.writeText(input.value);
+        showAlert('success', 'Link Exec berhasil disalin.');
+    } catch (error) {
+        input.select();
+        document.execCommand('copy');
+        showAlert('success', 'Link Exec berhasil disalin.');
+    }
+}
+
+window.saveOfflineAccounts = saveOfflineAccounts;
+window.copySyncExecLink = copySyncExecLink;
+window.loadOfflineSettings = loadOfflineSettings;
+
+async function saveLinkData(e) {
+    e.preventDefault(); const fd = new FormData(e.target); const token = currentUser ? currentUser.token : null;
+    const data = {
+        namaInstansi: fd.get('namaInstansi'),
+        namaOpd: fd.get('namaOpd'),
+        logoInstansi: document.getElementById('finalLogoInstansiData').value,
+        namasekolah: fd.get('namasekolah'),
+        logo: document.getElementById('finalLogoData').value,
+        alamat: fd.get('alamat'),
+        teleponSekolah: fd.get('teleponSekolah'),
+        emailSekolah: fd.get('emailSekolah'),
+        gradient1: fd.get('gradient1'),
+        gradient2: fd.get('gradient2'),
+        gradient3: fd.get('gradient3'),
+        gradient4: fd.get('gradient4'),
+        website: fd.get('website'),
+        runningtext: fd.get('runningtext')
+    };
+    showLoading();
+    try {
+        const res = window.electronAPI
+            ? await fetchAPI('saveAppConfig', { newConfig: data })
+            : await fetchAPI('updateLinkSettings', { token: token, data: data });
+        hideLoading();
+        if (res?.success) {
+            const savedConfig = res.data && typeof res.data === 'object' ? res.data : data;
+            // Simpan ke cache hanya field teks (tanpa logo besar)
+            try {
+                const cachedData = JSON.parse(localStorage.getItem('app_configs') || '{}');
+                const cacheOnly = stripLargeFields({ ...cachedData, ...savedConfig });
+                localStorage.setItem('app_configs', JSON.stringify(cacheOnly));
+                localStorage.setItem('appConfigCache', JSON.stringify(cacheOnly));
+            } catch (e) { console.warn('Gagal simpan cache setelah save:', e); }
+            if (!window.electronAPI) {
+                try { await cacheBranding(savedConfig); } catch (error) { console.warn('Gagal menyimpan logo ke cache browser:', error); }
+            }
+            applyPengaturanFormData(e.target, savedConfig);
+            applyAppConfigToUI({ ...window.appConfig, ...savedConfig });
+            showAlert('success', res.message || 'Pengaturan berhasil disimpan.');
+        }
+        else { showAlert('error', res?.message || 'Pengaturan gagal disimpan.'); }
+    } catch (err) {
+        hideLoading();
+        console.error('Gagal menyimpan pengaturan sekolah:', err);
+        showAlert('error', 'Pengaturan gagal disimpan: ' + (err.message || err));
+    }
+}
+
+// LOGIKA UPLOAD & CROP LOGO
+let cropperInstance = null;
+let targetCropInput = '';
+let targetCropPreview = '';
+const MAX_LOGO_DATA_URL_LENGTH = 45000;
+
+document.addEventListener("DOMContentLoaded", async function () {
+    const dateElement = document.getElementById('currentDateDisplay');
+    if (dateElement) {
+        dateElement.textContent = new Date().toLocaleDateString('id-ID', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+    }
+
+    const dateInput = document.getElementById('tgl_export_harian');
+    if (dateInput) {
+        const d = new Date();
+        dateInput.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function setupLogoUpload(inputId, hiddenInputId, previewId) {
+        const fileInput = document.getElementById(inputId);
+        if (fileInput) {
+            fileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 2 * 1024 * 1024) { showAlert('error', 'Ukuran maksimal 2MB!'); this.value = ''; return; }
+                    targetCropInput = hiddenInputId;
+                    targetCropPreview = previewId;
+                    const reader = new FileReader();
+                    reader.onload = function (event) { openCropModal(event.target.result); };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }
+
+    setupLogoUploadListeners();
+
+    await checkSession();
+});
+
+function setupLogoUploadListeners() {
+    [['inputLogoFile', 'finalLogoData', 'previewLogoSetting'], ['inputLogoInstansiFile', 'finalLogoInstansiData', 'previewLogoInstansiSetting']].forEach(([inputId, hiddenInputId, previewId]) => {
+        const fileInput = document.getElementById(inputId);
+        if (!fileInput || fileInput.dataset.cropBound === 'true') return;
+        fileInput.dataset.cropBound = 'true';
+        fileInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { showAlert('error', 'Ukuran maksimal 2MB!'); this.value = ''; return; }
+            targetCropInput = hiddenInputId;
+            targetCropPreview = previewId;
+            const reader = new FileReader();
+            reader.onload = event => openCropModal(event.target.result);
+            reader.readAsDataURL(file);
+        });
+    });
+}
+
+function applyGradientColors(config) {
+    const root = document.documentElement;
+    root.style.setProperty('--gradient-1', config.gradient1 || '#6366f1');
+    root.style.setProperty('--gradient-2', config.gradient2 || '#a855f7');
+    root.style.setProperty('--gradient-3', config.gradient3 || '#3b82f6');
+    root.style.setProperty('--gradient-4', config.gradient4 || '#ec4899');
+}
+
+function openCropModal(imageSrc) {
+    const modal = document.getElementById('cropModal');
+    const image = document.getElementById('imageToCrop');
+    modal.classList.remove('hidden');
+    image.src = imageSrc;
+    if (cropperInstance) { cropperInstance.destroy(); }
+    cropperInstance = new Cropper(image, { aspectRatio: 1 / 1, viewMode: 1, background: false, autoCropArea: 0.8, dragMode: 'move' });
+}
+
+function updateLogoClearButton(type, value) {
+    const button = document.getElementById(type === 'instansi' ? 'clearLogoInstansi' : 'clearLogoSekolah');
+    if (button) button.classList.toggle('hidden', !value);
+}
+
+function clearLogo(type) {
+    const inputId = type === 'instansi' ? 'finalLogoInstansiData' : 'finalLogoData';
+    const previewId = type === 'instansi' ? 'previewLogoInstansiSetting' : 'previewLogoSetting';
+    const fileId = type === 'instansi' ? 'inputLogoInstansiFile' : 'inputLogoFile';
+    document.getElementById(inputId).value = '';
+    document.getElementById(previewId).src = '';
+    document.getElementById(fileId).value = '';
+    updateLogoClearButton(type, '');
+}
+
+function closeCropModal() {
+    document.getElementById('cropModal').classList.add('hidden');
+    if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+    document.getElementById('inputLogoFile').value = '';
+    document.getElementById('inputLogoInstansiFile').value = '';
+}
+
+function applyCrop() {
+    if (!cropperInstance) return;
+    const canvas = cropperInstance.getCroppedCanvas({ width: 250, height: 250 });
+    if (!canvas) {
+        showAlert('error', 'Logo gagal diproses. Silakan pilih gambar lain.');
+        return;
+    }
+
+    let croppedBase64 = '';
+    for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42, 0.32]) {
+        const encoded = canvas.toDataURL('image/webp', quality);
+        if (encoded.startsWith('data:image/webp') && encoded.length <= MAX_LOGO_DATA_URL_LENGTH) {
+            croppedBase64 = encoded;
+            break;
+        }
+    }
+    if (!croppedBase64) {
+        const png = canvas.toDataURL('image/png');
+        if (png.length <= MAX_LOGO_DATA_URL_LENGTH) croppedBase64 = png;
+    }
+    if (!croppedBase64) {
+        showAlert('error', 'Ukuran logo masih lebih dari 45 KB. Gunakan gambar yang lebih sederhana atau browser yang mendukung WebP.');
+        return;
+    }
+
+    document.getElementById(targetCropPreview).src = croppedBase64;
+    document.getElementById(targetCropInput).value = croppedBase64;
+    updateLogoClearButton(targetCropPreview === 'previewLogoInstansiSetting' ? 'instansi' : 'sekolah', croppedBase64);
+    closeCropModal();
+}
+
+// ============================================================
+// MANAJEMEN TABEL (PAGINATION, FILTER, SEARCH)
+// ============================================================
+function handleTableSearch(type, query) {
+    tableState[type].search = query.toLowerCase();
+    tableState[type].page = 1;
+    processTableData(type);
+}
+
+function handleTableClassFilter(type, value) {
+    if (tableState[type]) {
+        tableState[type].classFilter = value;
+        tableState[type].page = 1;
+
+        if (type === 'monitoring') {
+            const dateInput = document.getElementById('tgl_export_harian');
+            if (dateInput && dateInput.value) {
+                tableState.monitoring.cacheKey = '';
+                loadMonitoringAbsensi(true);
+                return;
+            }
+        }
+
+        processTableData(type);
+    }
+}
+
+function handleTableStatusFilter(type, status) {
+    if (tableState[type]) {
+        tableState[type].statusFilter = status;
+        tableState[type].page = 1;
+        processTableData(type);
+    }
+}
+
+function handleTableLimit(type, limit) {
+    tableState[type].limit = limit === 'all' ? Infinity : parseInt(limit);
+    tableState[type].page = 1;
+    processTableData(type);
+}
+
+function changePage(type, direction) {
+    const state = tableState[type];
+    const maxPage = Math.ceil(state.filtered.length / state.limit);
+    const newPage = state.page + direction;
+    if (newPage >= 1 && newPage <= maxPage) {
+        state.page = newPage;
+        processTableData(type);
+    }
+}
+
+function processTableData(type) {
+    const state = tableState[type];
+    let result = [...state.fullData];
+
+    if ((type === 'siswa' || type === 'guru' || type === 'monitoring' || type === 'pelanggaran') && state.classFilter) {
+        result = result.filter(item => item.kelas === state.classFilter);
+    }
+    if (type === 'monitoring' && state.statusFilter) {
+        result = result.filter(item => item.status === state.statusFilter);
+    }
+    if (state.search) {
+        const query = state.search.toLowerCase();
+        result = result.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(query)));
+    }
+
+    state.filtered = result;
+    const total = state.filtered.length;
+    const totalPages = Math.ceil(total / state.limit);
+
+    if (state.page > totalPages && totalPages > 0) state.page = totalPages;
+    if (total === 0) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.limit;
+    const endIdx = startIdx + state.limit;
+    const pagedData = state.filtered.slice(startIdx, endIdx);
+
+    if (type === 'siswa') renderSiswaRows(pagedData, startIdx);
+    else if (type === 'siswaNonaktif') renderSiswaNonaktifRows(pagedData, startIdx);
+    else if (type === 'guru') renderGuruRows(pagedData, startIdx);
+    else if (type === 'libur') renderLiburRows(pagedData, startIdx);
+    else if (type === 'rekap') renderRekapRows(pagedData);
+    else if (type === 'monitoring') renderMonitoringRows(pagedData, startIdx);
+    else if (type === 'wfh') renderWfhRows(pagedData, startIdx);
+    else if (type === 'pelanggaran') {
+        renderPelanggaranRows(pagedData, startIdx);
+        document.getElementById('info-pelanggaran').textContent = `Menampilkan ${startIdx + 1}-${Math.min(endIdx, total)} dari ${total} data`;
+        document.getElementById('btn-prev-pelanggaran').disabled = state.page === 1;
+        document.getElementById('btn-next-pelanggaran').disabled = state.page === totalPages || totalPages === 0;
+    }
+
+    if (type !== 'pelanggaran') {
+        updatePaginationUI(type, startIdx, pagedData.length, total, state.page, totalPages);
+    }
+}
+
+function updatePaginationUI(type, startIdx, currentCount, total, currentPage, totalPages) {
+    const infoEl = document.getElementById(`info-${type}`);
+    const btnPrev = document.getElementById(`btn-prev-${type}`);
+    const btnNext = document.getElementById(`btn-next-${type}`);
+
+    if (total === 0) {
+        if (infoEl) infoEl.textContent = 'Tidak ada data ditemukan.';
+        if (btnPrev) btnPrev.disabled = true;
+        if (btnNext) btnNext.disabled = true;
+    } else {
+        const end = startIdx + currentCount;
+        if (infoEl) infoEl.textContent = `Menampilkan ${startIdx + 1} - ${end} dari ${total} data`;
+        if (btnPrev) btnPrev.disabled = currentPage === 1;
+        if (btnNext) btnNext.disabled = currentPage >= totalPages;
+    }
+}
+
+// ============================================================
+// OTENTIKASI & SESI (LOGIN/LOGOUT)
+// ============================================================
+function switchLoginTab(tab) {
+    const errEl = document.getElementById('loginError');
+    if (errEl) errEl.classList.add('hidden');
+    const btnSiswa = document.getElementById('btnSiswaTab');
+    const btnAdmin = document.getElementById('btnAdminTab');
+    const active = "flex-1 py-2.5 lg:py-3 text-sm font-bold rounded-lg shadow-md bg-white/20 text-white ring-1 ring-white/30 transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-sm";
+    const inactive = "flex-1 py-2.5 lg:py-3 text-sm font-medium rounded-lg text-indigo-100 hover:text-white hover:bg-white/10 transition-all duration-300 flex items-center justify-center gap-2";
+
+    if (btnSiswa) btnSiswa.className = tab === 'siswa' ? active : inactive;
+    if (btnAdmin) btnAdmin.className = tab === 'admin' ? active : inactive;
+
+    const formAdmin = document.getElementById('formAdminLogin');
+    const formSiswa = document.getElementById('formSiswaLogin');
+    const inputNisn = document.getElementById('nisn');
+    const inputPassSiswa = document.getElementById('passwordSiswa');
+    const inputUser = document.getElementById('username');
+    const inputPass = document.getElementById('password');
+
+    if (tab === 'admin') {
+        if (formAdmin) formAdmin.classList.remove('hidden');
+        if (formSiswa) formSiswa.classList.add('hidden');
+        if (inputNisn) inputNisn.disabled = true;
+        if (inputPassSiswa) inputPassSiswa.disabled = true;
+        if (inputUser) { inputUser.disabled = false; inputUser.focus(); }
+        if (inputPass) inputPass.disabled = false;
+    } else {
+        if (formAdmin) formAdmin.classList.add('hidden');
+        if (formSiswa) formSiswa.classList.remove('hidden');
+        if (inputNisn) { inputNisn.disabled = false; inputNisn.focus(); }
+        if (inputPassSiswa) inputPassSiswa.disabled = false;
+        if (inputUser) inputUser.disabled = true;
+        if (inputPass) inputPass.disabled = true;
+    }
+}
+
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const icon = document.getElementById('togglePasswordIcon');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function togglePasswordSiswa() {
+    const pwd = document.getElementById('passwordSiswa');
+    const icon = document.getElementById('toggleSiswaPassIcon');
+    if (pwd.type === 'password') { pwd.type = 'text'; icon.classList.replace('fa-eye', 'fa-eye-slash'); }
+    else { pwd.type = 'password'; icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+}
+
+function toggleInputPass(inputId, iconId) {
+    const inp = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (!inp) return;
+    if (inp.type === "password") {
+        inp.type = "text";
+        if (icon) {
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    } else {
+        inp.type = "password";
+        if (icon) {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+}
+window.toggleInputPass = toggleInputPass;
+
+function restoreRememberedLogin() {
+    const username = document.getElementById('username');
+    const nisn = document.getElementById('nisn');
+    if (username) username.value = localStorage.getItem('lastLoginUsername') || '';
+    if (nisn) nisn.value = localStorage.getItem('lastLoginNisn') || '';
+}
+
+async function requirePasswordChange(user) {
+    if (!user?.mustChangePassword) return true;
+
+    const reminder = await Swal.fire({
+        icon: 'warning',
+        title: 'Password Masih Standar',
+        text: 'Password Anda masih menggunakan password standar 123456. Disarankan untuk menggantinya.',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, ganti sekarang',
+        cancelButtonText: 'Nanti',
+        confirmButtonColor: '#4f46e5',
+        cancelButtonColor: '#64748b'
+    });
+
+    if (!reminder.isConfirmed) return true;
+
+    const result = await Swal.fire({
+        icon: 'info',
+        title: 'Ubah Password',
+        text: 'Masukkan password baru dan ulangi untuk mengonfirmasi.',
+        html: `
+            <style>
+                .forced-password-wrap { position: relative; width: min(420px, 100%); margin: 12px auto; }
+                .forced-password-wrap input { box-sizing: border-box; width: 100%; margin: 0; padding-right: 48px; }
+                .forced-password-toggle { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); border: 0; background: transparent; color: #64748b; cursor: pointer; padding: 8px; }
+            </style>
+            <div class="forced-password-wrap">
+                <input id="forcedNewPassword" type="password" class="swal2-input" placeholder="Password baru" autocomplete="new-password">
+                <button type="button" class="forced-password-toggle" data-target="forcedNewPassword" aria-label="Tampilkan password"><i class="fas fa-eye"></i></button>
+            </div>
+            <div class="forced-password-wrap">
+                <input id="forcedConfirmPassword" type="password" class="swal2-input" placeholder="Konfirmasi password" autocomplete="new-password">
+                <button type="button" class="forced-password-toggle" data-target="forcedConfirmPassword" aria-label="Tampilkan konfirmasi password"><i class="fas fa-eye"></i></button>
+            </div>`,
+        focusConfirm: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showCancelButton: true,
+        cancelButtonText: 'Batal',
+        confirmButtonText: 'Simpan Password',
+        confirmButtonColor: '#4f46e5',
+        showLoaderOnConfirm: true,
+        didOpen: () => {
+            document.querySelectorAll('.forced-password-toggle').forEach(button => {
+                button.addEventListener('click', () => {
+                    const input = document.getElementById(button.dataset.target);
+                    const icon = button.querySelector('i');
+                    if (!input || !icon) return;
+                    input.type = input.type === 'password' ? 'text' : 'password';
+                    icon.classList.toggle('fa-eye');
+                    icon.classList.toggle('fa-eye-slash');
+                });
+            });
+        },
+        preConfirm: () => {
+            const newPassword = document.getElementById('forcedNewPassword')?.value || '';
+            const confirmation = document.getElementById('forcedConfirmPassword')?.value || '';
+            if (newPassword.length < 6) {
+                Swal.showValidationMessage('Password baru minimal 6 karakter.');
+                return false;
+            }
+            if (newPassword === '123456' || newPassword === 'admin' || newPassword === 'gurupiket') {
+                Swal.showValidationMessage('Gunakan password yang lebih kuat.');
+                return false;
+            }
+            if (newPassword !== confirmation) {
+                Swal.showValidationMessage('Konfirmasi password tidak sama.');
+                return false;
+            }
+            return { newPassword };
+        }
+    });
+
+    if (!result.isConfirmed) return true;
+    const newPassword = result.value.newPassword;
+    let response;
+    try {
+        if (user.role === 'siswa') {
+            response = await fetchAPI('changeSiswaPassword', { token: user.token, oldPass: '123456', newPass: newPassword });
+        } else if (user.role === 'guru') {
+            response = await fetchAPI('changeGuruPassword', { token: user.token, username: user.username, oldPass: '123456', newPass: newPassword });
+        } else {
+            response = await fetchAPI('changeAdminPassword', { token: user.token, username: user.username || 'admin', newPass: newPassword });
+        }
+    } catch (error) {
+        response = { success: false, message: error.message || 'Password gagal diubah.' };
+    }
+    if (!response?.success) {
+        await Swal.fire('Gagal', response?.message || 'Password gagal diubah. Anda dapat mencoba lagi nanti.', 'error');
+        return false;
+    }
+    user.mustChangePassword = false;
+    setSession(user);
+    await Swal.fire('Berhasil', 'Password berhasil diubah.', 'success');
+    return true;
+}
+
+// Tampilkan pengingat/ubah password SETELAH beranda tampil (bukan di atas halaman login).
+async function promptPasswordChangeAfterHome(user) {
+    if (!user?.mustChangePassword) return;
+    // Beri waktu beranda selesai dirender agar modal muncul di atas halaman beranda.
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    if (!currentUser || currentUser.token !== user.token) return; // pengguna sudah logout
+    if (typeof Swal !== 'undefined' && Swal.isVisible && Swal.isVisible()) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    try {
+        await requirePasswordChange(user);
+    } catch (error) {
+        console.error('Gagal menampilkan modal ubah password:', error);
+    }
+}
+
+window.toggleTablePass = function (passId, iconId, password) {
+    const span = document.getElementById(passId);
+    const icon = document.getElementById(iconId);
+    if (span && icon) {
+        if (icon.classList.contains('fa-eye')) {
+            span.textContent = password;
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            span.textContent = '••••••••';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+}
+
+async function handleLogin(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const formSiswa = document.getElementById('formSiswaLogin');
+    const isSiswa = formSiswa ? !formSiswa.classList.contains('hidden') : true;
+
+    const nisnInput = document.getElementById('nisn');
+    const userInput = document.getElementById('username');
+    const passSiswaInput = document.getElementById('passwordSiswa');
+    const passInput = document.getElementById('password');
+
+    const nisnVal = (nisnInput ? nisnInput.value : "").trim();
+    const userVal = (userInput ? userInput.value : "").trim();
+    const passVal = isSiswa ? (passSiswaInput ? passSiswaInput.value : "") : (passInput ? passInput.value : "");
+
+    if (isSiswa) {
+        if (!nisnVal || !passVal) {
+            showAlert('warning', 'Silakan masukkan NISN dan Password Siswa.');
+            return;
+        }
+    } else {
+        if (!userVal || !passVal) {
+            showAlert('warning', 'Silakan masukkan Username dan Password.');
+            return;
+        }
+    }
+
+    localStorage.setItem(isSiswa ? 'lastLoginNisn' : 'lastLoginUsername', isSiswa ? nisnVal : userVal);
+
+    const btnSubmit = document.getElementById('btnSubmitLogin');
+    const btnText = document.getElementById('btnSubmitLoginText');
+    const btnIcon = document.getElementById('btnSubmitLoginIcon');
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnText) btnText.textContent = 'MEMPROSES...';
+    if (btnIcon) btnIcon.className = 'fas fa-spinner fa-spin';
+
+    showLoading();
+
+    try {
+        let result;
+        if (window.electronAPI) {
+            // Mode Offline: Siswa dan Guru via SQLite, Admin via config-offline.json
+            if (isSiswa) {
+                const res = await window.electronAPI.queryDB('login', { nisn: nisnVal, password: passVal, role: 'siswa' });
+                if (res && res.success) {
+                    result = {
+                        ...res,
+                        success: true,
+                        token: res.token,
+                        role: 'siswa',
+                        nama: res.nama,
+                        id: res.nisn,
+                        kelas: res.kelas,
+                        nisn: res.nisn,
+                        jenisKelamin: res.jenisKelamin || res.jenis_kelamin || '',
+                        tanggalLahir: res.tanggalLahir || res.tanggal_lahir || ''
+                    };
+                } else {
+                    result = { success: false, message: (res && res.message) || 'NISN atau password salah.' };
+                }
+            } else {
+                const res = await window.electronAPI.queryDB('login', { username: userVal, password: passVal, role: 'guru' });
+                if (res && res.success) {
+                    const u = res.user || res;
+                    result = {
+                        ...res,
+                        ...u,
+                        success: true,
+                        role: res.role || u.role || 'guru',
+                        nama: res.nama || u.nama || u.username,
+                        id: res.id || u.id || u.username,
+                        username: res.username || u.username || userVal,
+                        kelas: u.kelas || '',
+                        jenisKelamin: u.jenisKelamin || '',
+                        statusPegawai: u.statusPegawai || '',
+                        mapel: u.mapel || '',
+                        wali_kelas: u.wali_kelas || '',
+                        token: res.token
+                    };
+                } else {
+                    result = { success: false, message: (res && res.message) ? res.message : 'Username atau password salah.' };
+                }
+            }
+        } else {
+            // Mode Online
+            result = await fetchAPI('login', {
+                username: isSiswa ? nisnVal : userVal,
+                password: passVal,
+                nisn: isSiswa ? nisnVal : '',
+                role: isSiswa ? 'siswa' : 'staff'
+            });
+        }
+
+        hideLoading();
+
+        if (result && result.success) {
+            currentUser = result;
+            setSession(result);
+            document.getElementById('loginPage')?.classList.add('hidden');
+            document.getElementById('dashboardContainer')?.classList.remove('hidden');
+            initDashboard();
+            void preloadRoleViews(result.role);
+            void initAppConfigs();
+            void promptPasswordChangeAfterHome(result);
+        } else {
+            const errorDiv = document.getElementById('loginError');
+            const errMsg = (result && result.message) || 'Username atau password salah.';
+            if (errorDiv) {
+                const errText = document.getElementById('errorText');
+                if (errText) errText.textContent = errMsg;
+                errorDiv.classList.remove('hidden');
+                setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Login Gagal',
+                text: errMsg,
+                confirmButtonColor: '#3085d6'
+            });
+        }
+    } catch (error) {
+        hideLoading();
+        console.error("Login catch error:", error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Koneksi Gagal',
+            text: 'Gagal terhubung ke server: ' + (error.message || error.toString()),
+            confirmButtonColor: '#3085d6'
+        });
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnText) btnText.textContent = 'LOGIN';
+        if (btnIcon) btnIcon.className = 'fas fa-arrow-right-long';
+    }
+}
+
+async function preloadRoleViews(role) {
+    const commonViews = ['view-admin-dashboard', 'view-data-siswa', 'view-data-guru', 'view-monitoring', 'view-rekap-absensi', 'view-master-pelanggaran', 'view-input-kasus', 'view-rekap-kasus', 'view-konsekuensi', 'view-pengaturan'];
+    const roleViews = role === 'siswa'
+        ? ['view-siswa-dashboard', 'view-rekap-siswa', 'view-kartu-siswa', 'view-absen-wfh', 'view-izin-siswa']
+        : role === 'guru'
+            ? ['view-guru-dashboard', 'view-scanner']
+            : ['view-scanner', 'view-kelola-absen'];
+    try { await preloadViews([...commonViews, ...roleViews]); }
+    catch (error) { console.error('Gagal preload view:', error); }
+}
+
+async function checkSession() {
+    const sessionData = getSession();
+    if (sessionData && sessionData.success) {
+        try {
+            if (sessionData.expiresAt && sessionData.expiresAt <= Date.now()) {
+                handleSessionExpired();
+                return;
+            }
+
+            if (window.electronAPI) {
+                const validation = await window.electronAPI.queryDB('validateSession', { token: sessionData.token });
+                if (!validation?.success) {
+                    handleSessionExpired();
+                    return;
+                }
+            }
+            // Sesi lama tidak memiliki penanda ini; perlakukan sebagai sesi valid biasa.
+            if (typeof sessionData.mustChangePassword !== 'boolean') {
+                sessionData.mustChangePassword = false;
+                setSession(sessionData);
+            }
+            currentUser = sessionData;
+
+            document.getElementById('loginPage')?.classList.add('hidden');
+            document.getElementById('dashboardContainer')?.classList.remove('hidden');
+            if (window.innerWidth < 768) document.getElementById('sidebar')?.classList.add('-translate-x-full');
+            initDashboard();
+            void preloadRoleViews(sessionData.role);
+            void initAppConfigs();
+            return;
+        } catch (e) {
+            console.error('Session invalid', e);
+            handleSessionExpired();
+            return;
+        }
+    } else {
+        localStorage.removeItem('absensiAppSession');
+        currentUser = null;
+    }
+    // JIKA TIDAK ADA SESSION ATAU SESSION TIDAK VALID, panggil showView agar HTML dimuat!
+    document.getElementById('dashboardContainer')?.classList.add('hidden');
+    await showView('loginPage');
+    document.getElementById('loginPage')?.classList.remove('hidden');
+    initAppConfigs();
+    restoreRememberedLogin();
+}
+
+function checkActiveSessionExpiry() {
+    if (!currentUser || isSessionExpiredAlertOpen) return;
+    const sessionData = getSession();
+    if (!sessionData) {
+        handleSessionExpired();
+        return;
+    }
+
+    if (sessionData.expiresAt && sessionData.expiresAt <= Date.now()) {
+        handleSessionExpired();
+        return;
+    }
+
+    if (window.electronAPI && currentUser.token) {
+        window.electronAPI.queryDB('validateSession', { token: currentUser.token }).then(res => {
+            if (res && res.success === false) {
+                handleSessionExpired();
+            }
+        }).catch(() => { });
+    }
+}
+
+// Pantau sesi secara otomatis di HP, Laptop Online, dan Desktop Offline
+setInterval(checkActiveSessionExpiry, 15000);
+window.addEventListener('focus', checkActiveSessionExpiry);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        checkActiveSessionExpiry();
+    }
+});
+
+function logout() {
+    Swal.fire({
+        title: 'Konfirmasi Keluar',
+        text: "Apakah Anda yakin ingin keluar dari aplikasi?",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Keluar!',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            executeLogout();
+        }
+    });
+}
+
+async function executeLogout() {
+    stopAndBack(false);
+    if (window.electronAPI && currentUser?.token) {
+        try { await window.electronAPI.queryDB('logout', { token: currentUser.token }); } catch (_) { }
+    }
+    localStorage.removeItem('absensiAppSession');
+    currentUser = null;
+    appCache = { siswa: null, guru: null };
+    document.getElementById('dashboardContainer').classList.add('hidden');
+    await showView('loginPage');
+    document.getElementById('loginPage').classList.remove('hidden');
+    await initAppConfigs();
+    restoreRememberedLogin();
+
+    if (document.getElementById('username')) document.getElementById('username').value = localStorage.getItem('lastLoginUsername') || '';
+    if (document.getElementById('password')) document.getElementById('password').value = '';
+    if (document.getElementById('nisn')) document.getElementById('nisn').value = localStorage.getItem('lastLoginNisn') || '';
+
+    document.getElementById('sidebar').classList.add('-translate-x-full');
+}
+
+function showMobileLogin() {
+    document.getElementById('loginPage').classList.add('mobile-login-active');
+}
+
+function hideMobileLogin() {
+    document.getElementById('loginPage').classList.remove('mobile-login-active');
+}
+
+// ============================================================
+// NAVIGASI (SIDEBAR & VIEW)
+// ============================================================
+let viewIdGlobal = '';
+
+function updateViewUI(viewId) {
+    viewIdGlobal = viewId;
+    const fabKasus = document.getElementById('fabInputKasus');
+    if (fabKasus) {
+        if (currentUser && currentUser.role === 'admin' && viewId !== 'view-input-kasus') {
+            fabKasus.classList.remove('hidden');
+        } else {
+            fabKasus.classList.add('hidden');
+        }
+    }
+    const fabScan = document.getElementById('fabScanAbsensi');
+    if (fabScan) {
+        fabScan.classList.toggle('hidden', !(currentUser && currentUser.role === 'admin' && viewId !== 'view-scanner'));
+    }
+
+    document.querySelectorAll('#mainContentArea > .view-section, #loginPage').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('hidden');
+        el.style.display = '';
+    });
+
+    const target = document.getElementById(viewId);
+    if (target) {
+        target.classList.add('active');
+        target.classList.remove('hidden');
+        target.style.display = '';
+        target.classList.add('animate-fade-in');
+        // Pastikan elemen child (inner div dari view) juga di-unhide jika terlanjur disembunyikan
+        const innerView = target.querySelector('.view-section');
+        if (innerView) {
+            innerView.classList.remove('hidden');
+            innerView.style.display = '';
+        }
+        // Reset scroll ke atas setiap ganti halaman/tab
+        const mainArea = document.getElementById('mainContentArea');
+        if (mainArea) mainArea.scrollTop = 0;
+    }
+
+
+
+    let title = "Dashboard";
+    switch (viewId) {
+        case 'view-data-siswa': title = "Direktori Siswa"; break;
+        case 'view-data-guru': title = "Manajemen Guru"; break;
+        case 'view-kelola-absen': title = "Kelola Jadwal"; break;
+        case 'view-scanner': title = "Kelola Presensi"; break;
+        case 'view-monitoring': title = "Monitoring Realtime"; break;
+        case 'view-rekap-absensi': title = "Laporan Kehadiran"; break;
+        case 'view-rekap-siswa': title = "Rekap Presensi Siswa"; break;
+        case 'view-kartu-siswa': title = "Kartu Presensi Digital"; break;
+        case 'view-pengaturan': title = "Pengaturan Sistem"; break;
+        case 'view-absen-wfh': title = "Presensi WFH"; break;
+        case 'view-izin-siswa': title = "Pengajuan Izin / Sakit"; break;
+        case 'view-master-pelanggaran': title = "Data Pelanggaran"; break;
+        case 'view-konsekuensi': title = "Konsekuensi Harian"; break;
+        case 'view-input-kasus': title = "Catat Pelanggaran"; break;
+        case 'view-rekap-kasus': title = "Rekap Pelanggaran"; break;
+    }
+
+    document.getElementById('pageTitle').textContent = title;
+    closeSidebarMobile();
+    scrollToTop();
+}
+
+function setActiveMenu(targetName) {
+    sessionStorage.setItem('activeMenu', targetName);
+    const allLinks = document.querySelectorAll('#sidebarMenu a');
+    const centerClass = !isSidebarOpen ? 'justify-center px-0' : 'space-x-3 px-4';
+    const baseStyle = `flex items-center ${centerClass} py-3 rounded-xl transition-all duration-200 group overflow-hidden whitespace-nowrap cursor-pointer `;
+    const activeStyle = "bg-indigo-600 text-white shadow-lg shadow-indigo-900/50";
+    const inactiveStyle = "text-gray-400 hover:bg-gray-800 hover:text-white";
+
+    allLinks.forEach(link => {
+        const menuName = link.getAttribute('data-name');
+        link.className = (menuName === targetName) ? (baseStyle + activeStyle) : (baseStyle + inactiveStyle);
+    });
+}
+
+window.toggleAdminMenu = function (id) {
+    const el = document.getElementById(id);
+    const icon = document.getElementById(id + '-icon');
+    if (el.classList.contains('hidden')) {
+        el.classList.remove('hidden');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+    } else {
+        el.classList.add('hidden');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+};
+
+window.closeAllSubNavs = function () {
+    document.querySelectorAll('.mobile-subnav').forEach(el => el.classList.add('hidden'));
+    const fabKasus = document.getElementById('fabInputKasus');
+    if (fabKasus && currentUser && viewIdGlobal !== 'view-input-kasus') {
+        fabKasus.style.opacity = '1';
+        fabKasus.style.pointerEvents = 'auto';
+    }
+    const fabScan = document.getElementById('fabScanAbsensi');
+    if (fabScan && currentUser && viewIdGlobal !== 'view-scanner') {
+        fabScan.style.opacity = '1';
+        fabScan.style.pointerEvents = 'auto';
+    }
+};
+
+window.toggleSubNav = function (id) {
+    const el = document.getElementById(id);
+    const isHidden = el.classList.contains('hidden');
+    closeAllSubNavs();
+
+    if (isHidden) {
+        el.classList.remove('hidden');
+        ['fabInputKasus', 'fabScanAbsensi'].forEach(id => {
+            const fab = document.getElementById(id);
+            if (fab) {
+                fab.style.opacity = '0';
+                fab.style.pointerEvents = 'none';
+            }
+        });
+    }
+};
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('mobileOverlay');
+    const labels = document.querySelectorAll('.sidebar-label');
+    const header = document.getElementById('sidebarHeader');
+    const userCard = document.getElementById('userProfileCard');
+    const logoutBtn = document.getElementById('btnLogout');
+    const menuLinks = document.querySelectorAll('#sidebarMenu a');
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile) {
+        if (sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden', 'pointer-events-none');
+            setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+    } else {
+        if (isSidebarOpen) {
+            sidebar.classList.remove('w-64');
+            sidebar.classList.add('w-20');
+            document.getElementById('mainContent').classList.remove('md:ml-64');
+            document.getElementById('mainContent').classList.add('md:ml-20');
+            header.classList.remove('px-6', 'justify-start');
+            header.classList.add('px-0', 'justify-center');
+            userCard.classList.remove('space-x-3', 'p-3', 'bg-black/20', 'border');
+            userCard.classList.add('justify-center', 'p-0', 'bg-transparent', 'border-transparent');
+            logoutBtn.classList.remove('space-x-3', 'justify-start', 'px-4');
+            logoutBtn.classList.add('justify-center', 'px-0');
+            menuLinks.forEach(link => {
+                link.classList.remove('space-x-3', 'px-4');
+                link.classList.add('justify-center', 'px-0');
+            });
+            labels.forEach(el => { el.classList.add('hidden'); });
+            isSidebarOpen = false;
+        } else {
+            sidebar.classList.remove('w-20');
+            sidebar.classList.add('w-64');
+            document.getElementById('mainContent').classList.remove('md:ml-20');
+            document.getElementById('mainContent').classList.add('md:ml-64');
+            header.classList.add('px-6', 'justify-start');
+            header.classList.remove('px-0', 'justify-center');
+            userCard.classList.add('space-x-3', 'p-3', 'bg-black/20', 'border');
+            userCard.classList.remove('justify-center', 'p-0', 'bg-transparent', 'border-transparent');
+            logoutBtn.classList.add('space-x-3', 'justify-start', 'px-4');
+            logoutBtn.classList.remove('justify-center', 'px-0');
+            menuLinks.forEach(link => {
+                link.classList.add('space-x-3', 'px-4');
+                link.classList.remove('justify-center', 'px-0');
+            });
+            labels.forEach(el => { el.classList.remove('hidden'); });
+            isSidebarOpen = true;
+        }
+    }
+}
+
+function closeSidebarMobile() {
+    if (window.innerWidth < 768) {
+        document.getElementById('sidebar').classList.add('-translate-x-full');
+        const overlay = document.getElementById('mobileOverlay');
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+}
+
+const contentArea = document.getElementById('mainContentArea');
+const scrollBtn = document.getElementById('btnScrollTop');
+
+if (contentArea && scrollBtn) {
+    contentArea.onscroll = function () {
+        if (contentArea.scrollTop > 300) {
+            scrollBtn.classList.remove('opacity-0', 'translate-y-10', 'invisible');
+        }
+        else {
+            scrollBtn.classList.add('opacity-0', 'translate-y-10', 'invisible');
+        }
+    };
+}
+
+function scrollToTop() {
+    if (contentArea) {
+        contentArea.scrollTo({ top: 0, behavior: "smooth" });
+    }
+}
+
+function showPrivacyModal(e) {
+    if (e) e.preventDefault();
+    const modal = document.getElementById('privacyModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        const updateDate = document.getElementById('privacy-update-date');
+        if (updateDate) {
+            const date = new Date();
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            updateDate.textContent = monthNames[date.getMonth()] + " " + date.getFullYear();
+        }
+    }
+}
+
+function closePrivacyModal() {
+    const modal = document.getElementById('privacyModal');
+    if (modal) { modal.classList.add('hidden'); }
+}
