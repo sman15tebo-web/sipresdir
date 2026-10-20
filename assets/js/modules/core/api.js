@@ -6,7 +6,7 @@ const DEFAULT_API_URL = 'https://script.google.com/macros/s/';
 // Konfigurasi Multitenant (Banyak Sekolah dalam 1 Frontend)
 const TENANT_CONFIG = {
     // Ganti nilai-nilai ini dengan URL Web App Google Apps Script masing-masing sekolah
-    "sman15tebo": "https://script.google.com/macros/s/AKfycby_AaeZLMTunITSUpaU0r0sM11gZEbQ6c2bHMb3m3k-gP5K6UBivDQFwgOQXlIU4Njv/exec",
+    "sman15tebo": "https://script.google.com/macros/s/AKfycbz-avfNM6Pp4uADla6sxtG-IHGDm2oUnnSqS68C1O0fDNB8cRgIdudHYrqhQH2kzzz9/exec",
     "sman20tebo": DEFAULT_API_URL,
     "sekolah3": DEFAULT_API_URL,
     "default": DEFAULT_API_URL // HARUS ADA!
