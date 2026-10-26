@@ -505,7 +505,7 @@ function base64ToBlob(base64, type = 'application/pdf') {
 }
 
 window.hasCustomSopPdf = function() {
-    return Boolean(localStorage.getItem('sop_pdf_data') || localStorage.getItem('sop_pdf_url'));
+    return Boolean(localStorage.getItem('sipresdir_sop_pdf_data') || localStorage.getItem('sipresdir_sop_pdf_url'));
 };
 
 window.switchPengaturanTab = function(tabName) {
@@ -559,34 +559,34 @@ window.loadSOPHukumTab = async function() {
             try {
                 const offRes = await window.electronAPI.queryDB('getOfflineSopPdf');
                 if (offRes && offRes.hasCustom) {
-                    if (offRes.base64) localStorage.setItem('sop_pdf_data', offRes.base64);
-                    if (offRes.meta) localStorage.setItem('sop_pdf_meta', JSON.stringify(offRes.meta));
+                    if (offRes.base64) localStorage.setItem('sipresdir_sop_pdf_data', offRes.base64);
+                    if (offRes.meta) localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(offRes.meta));
                 } else if (offRes && !offRes.hasCustom) {
-                    localStorage.removeItem('sop_pdf_data');
-                    localStorage.removeItem('sop_pdf_meta');
+                    localStorage.removeItem('sipresdir_sop_pdf_data');
+                    localStorage.removeItem('sipresdir_sop_pdf_meta');
                 }
             } catch (_) {}
         } else {
             try {
                 const onlRes = await fetchAPI('getSopPdf', { token: currentUser?.token });
                 if (onlRes && onlRes.hasCustom) {
-                    if (onlRes.url) localStorage.setItem('sop_pdf_url', onlRes.url);
-                    if (onlRes.meta) localStorage.setItem('sop_pdf_meta', JSON.stringify(onlRes.meta));
-                    if (onlRes.base64) localStorage.setItem('sop_pdf_data', onlRes.base64);
+                    if (onlRes.url) localStorage.setItem('sipresdir_sop_pdf_url', onlRes.url);
+                    if (onlRes.meta) localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(onlRes.meta));
+                    if (onlRes.base64) localStorage.setItem('sipresdir_sop_pdf_data', onlRes.base64);
                 } else if (onlRes && !onlRes.hasCustom) {
-                    localStorage.removeItem('sop_pdf_data');
-                    localStorage.removeItem('sop_pdf_meta');
-                    localStorage.removeItem('sop_pdf_url');
+                    localStorage.removeItem('sipresdir_sop_pdf_data');
+                    localStorage.removeItem('sipresdir_sop_pdf_meta');
+                    localStorage.removeItem('sipresdir_sop_pdf_url');
                 }
             } catch (_) {}
         }
 
         const config = window.appConfig || {};
-        let customSopData = localStorage.getItem('sop_pdf_data') || config.sop_pdf_data || '';
-        let customSopUrl = localStorage.getItem('sop_pdf_url') || config.sop_pdf_url || '';
+        let customSopData = localStorage.getItem('sipresdir_sop_pdf_data') || config.sop_pdf_data || '';
+        let customSopUrl = localStorage.getItem('sipresdir_sop_pdf_url') || config.sop_pdf_url || '';
         let customSopMeta = null;
         try {
-            customSopMeta = JSON.parse(localStorage.getItem('sop_pdf_meta') || config.sop_pdf_meta || 'null');
+            customSopMeta = JSON.parse(localStorage.getItem('sipresdir_sop_pdf_meta') || config.sop_pdf_meta || 'null');
         } catch(e) {}
 
         const activeFileNameEl = document.getElementById('sopActiveFileName');
@@ -732,8 +732,8 @@ window.saveSopPdfFile = async function() {
                 throw new Error(msg);
             }
 
-            localStorage.setItem('sop_pdf_data', pendingSopPdfData);
-            localStorage.setItem('sop_pdf_meta', JSON.stringify(offRes.meta || pendingSopPdfMeta));
+            localStorage.setItem('sipresdir_sop_pdf_data', pendingSopPdfData);
+            localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(offRes.meta || pendingSopPdfMeta));
             hideLoading();
             Swal.fire({
                 icon: 'success',
@@ -759,9 +759,9 @@ window.saveSopPdfFile = async function() {
                 throw new Error(msg);
             }
 
-            localStorage.setItem('sop_pdf_data', pendingSopPdfData);
-            localStorage.setItem('sop_pdf_meta', JSON.stringify(onlRes.meta || pendingSopPdfMeta));
-            if (onlRes.url) localStorage.setItem('sop_pdf_url', onlRes.url);
+            localStorage.setItem('sipresdir_sop_pdf_data', pendingSopPdfData);
+            localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(onlRes.meta || pendingSopPdfMeta));
+            if (onlRes.url) localStorage.setItem('sipresdir_sop_pdf_url', onlRes.url);
 
             hideLoading();
             Swal.fire({
@@ -833,9 +833,9 @@ window.hapusSopPdf = function() {
                 }
             }
 
-            localStorage.removeItem('sop_pdf_data');
-            localStorage.removeItem('sop_pdf_meta');
-            localStorage.removeItem('sop_pdf_url');
+            localStorage.removeItem('sipresdir_sop_pdf_data');
+            localStorage.removeItem('sipresdir_sop_pdf_meta');
+            localStorage.removeItem('sipresdir_sop_pdf_url');
             if (activeSopBlobUrl) {
                 URL.revokeObjectURL(activeSopBlobUrl);
                 activeSopBlobUrl = null;
@@ -857,7 +857,7 @@ window.hapusSopPdf = function() {
 
 window.getActiveSopUrl = function() {
     // 1. Cek Blob URL lokal jika ada data base64 (offline maupun online)
-    const customData = localStorage.getItem('sop_pdf_data');
+    const customData = localStorage.getItem('sipresdir_sop_pdf_data');
     if (customData) {
         try {
             if (activeSopBlobUrl) URL.revokeObjectURL(activeSopBlobUrl);
@@ -871,7 +871,7 @@ window.getActiveSopUrl = function() {
     }
 
     // 2. Cek URL Google Drive jika berada di web online
-    const customUrl = localStorage.getItem('sop_pdf_url');
+    const customUrl = localStorage.getItem('sipresdir_sop_pdf_url');
     if (customUrl && !window.electronAPI) {
         return customUrl;
     }
@@ -928,20 +928,20 @@ window.downloadSopPdf = function() {
 
 window.openSOPModalLanding = async function() {
     // Jika belum ada di cache browser lokal, coba ambil dari server (Online GAS atau Offline SQLite)
-    if (!localStorage.getItem('sop_pdf_data') && !localStorage.getItem('sop_pdf_url')) {
+    if (!localStorage.getItem('sipresdir_sop_pdf_data') && !localStorage.getItem('sipresdir_sop_pdf_url')) {
         try {
             if (window.electronAPI) {
                 const offRes = await window.electronAPI.queryDB('getOfflineSopPdf');
                 if (offRes && offRes.hasCustom) {
-                    if (offRes.base64) localStorage.setItem('sop_pdf_data', offRes.base64);
-                    if (offRes.meta) localStorage.setItem('sop_pdf_meta', JSON.stringify(offRes.meta));
+                    if (offRes.base64) localStorage.setItem('sipresdir_sop_pdf_data', offRes.base64);
+                    if (offRes.meta) localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(offRes.meta));
                 }
             } else {
                 const onlRes = await fetchAPI('getSopPdf');
                 if (onlRes && onlRes.hasCustom) {
-                    if (onlRes.url) localStorage.setItem('sop_pdf_url', onlRes.url);
-                    if (onlRes.meta) localStorage.setItem('sop_pdf_meta', JSON.stringify(onlRes.meta));
-                    if (onlRes.base64) localStorage.setItem('sop_pdf_data', onlRes.base64);
+                    if (onlRes.url) localStorage.setItem('sipresdir_sop_pdf_url', onlRes.url);
+                    if (onlRes.meta) localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(onlRes.meta));
+                    if (onlRes.base64) localStorage.setItem('sipresdir_sop_pdf_data', onlRes.base64);
                 }
             }
         } catch (_) {}
@@ -1027,7 +1027,7 @@ window.downloadActiveSop = function() {
 
     let fileName = 'Dokumen_SOP_SiPreSDir.pdf';
     try {
-        const meta = JSON.parse(localStorage.getItem('sop_pdf_meta') || 'null');
+        const meta = JSON.parse(localStorage.getItem('sipresdir_sop_pdf_meta') || 'null');
         if (meta?.name) fileName = meta.name;
     } catch(e) {}
 
@@ -1228,4 +1228,4 @@ window.resetDasarHukumToDefault = function() {
         }
     });
 };
-
+
