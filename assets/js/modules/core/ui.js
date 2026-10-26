@@ -319,15 +319,15 @@ async function executeSync() {
 
             const sopStatus = await window.electronAPI.queryDB('getOfflineSopPdf', { token: currentUser?.token });
             if (sopStatus?.hasCustom && sopStatus.base64) {
-                localStorage.setItem('sop_pdf_data', sopStatus.base64);
-                if (sopStatus.meta) localStorage.setItem('sop_pdf_meta', JSON.stringify(sopStatus.meta));
+                localStorage.setItem('sipresdir_sop_pdf_data', sopStatus.base64);
+                if (sopStatus.meta) localStorage.setItem('sipresdir_sop_pdf_meta', JSON.stringify(sopStatus.meta));
                 updateProgress('step-sync-sop', 'success', cacheResult.preservedPending
                     ? 'SOP lokal tetap tersimpan dan siap dibuka sambil menunggu unggahan.'
                     : 'SOP berhasil diunduh dan disimpan di laptop untuk dibuka offline.');
             } else {
-                localStorage.removeItem('sop_pdf_data');
-                localStorage.removeItem('sop_pdf_meta');
-                localStorage.removeItem('sop_pdf_url');
+                localStorage.removeItem('sipresdir_sop_pdf_data');
+                localStorage.removeItem('sipresdir_sop_pdf_meta');
+                localStorage.removeItem('sipresdir_sop_pdf_url');
                 updateProgress('step-sync-sop', 'success', 'Server belum memiliki SOP kustom; template standar tetap tersedia.');
             }
         } catch (sopSyncErr) {
