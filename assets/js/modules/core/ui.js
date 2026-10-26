@@ -300,19 +300,39 @@ async function executeSync() {
         // Step Penyelarasan Dokumen SOP SiPreSDir (Laptop <-> Google Drive)
         updateProgress('step-sync-sop', 'loading', 'Menyelaraskan dokumen SOP SiPreSDir (Laptop <-> Google Drive)...');
         try {
-            const sopStatus = await window.electronAPI.queryDB('getOfflineSopPdf');
-            if (sopStatus && sopStatus.hasCustom) {
-                if (sopStatus.base64) localStorage.setItem('sop_pdf_data', sopStatus.base64);
+            const sopOnline = await window.electronAPI.proxyGas(newLink, {
+                action: 'getSopPdf',
+                token: onlineToken,
+                includeBase64: true
+            }, currentUser?.token);
+            if (!sopOnline?.success) {
+                throw new Error(sopOnline?.message || 'Server tidak mengirim data SOP dengan benar.');
+            }
+
+            const cacheResult = await window.electronAPI.queryDB('cacheSyncedSopPdf', {
+                token: currentUser?.token,
+                sop: sopOnline
+            });
+            if (!cacheResult?.success) {
+                throw new Error(cacheResult?.message || 'SOP gagal disimpan ke penyimpanan laptop.');
+            }
+
+            const sopStatus = await window.electronAPI.queryDB('getOfflineSopPdf', { token: currentUser?.token });
+            if (sopStatus?.hasCustom && sopStatus.base64) {
+                localStorage.setItem('sop_pdf_data', sopStatus.base64);
                 if (sopStatus.meta) localStorage.setItem('sop_pdf_meta', JSON.stringify(sopStatus.meta));
-                updateProgress('step-sync-sop', 'success', 'Dokumen SOP kustom tersinkron dan siap dibuka offline.');
+                updateProgress('step-sync-sop', 'success', cacheResult.preservedPending
+                    ? 'SOP lokal tetap tersimpan dan siap dibuka sambil menunggu unggahan.'
+                    : 'SOP berhasil diunduh dan disimpan di laptop untuk dibuka offline.');
             } else {
                 localStorage.removeItem('sop_pdf_data');
                 localStorage.removeItem('sop_pdf_meta');
-                updateProgress('step-sync-sop', 'success', 'Dokumen SOP menggunakan template draf baku standar.');
+                localStorage.removeItem('sop_pdf_url');
+                updateProgress('step-sync-sop', 'success', 'Server belum memiliki SOP kustom; template standar tetap tersedia.');
             }
         } catch (sopSyncErr) {
-            console.warn('Gagal perbarui cache SOP lokal:', sopSyncErr);
-            updateProgress('step-sync-sop', 'warning', 'Penyelarasan SOP selesai.');
+            console.error('Gagal mengunduh atau menyimpan SOP ke laptop:', sopSyncErr);
+            updateProgress('step-sync-sop', 'warning', `SOP belum berhasil disimpan di laptop: ${sopSyncErr.message || sopSyncErr}`);
         }
 
         const counts = result.counts || {};
