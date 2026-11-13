@@ -409,6 +409,6 @@ function cetakKonsekuensi(idx) {
 async function loadHalamanKonsekuensi() { 
     stopAndBack(false); 
     setActiveMenu('Konsekuensi Harian'); 
-    showView('view-konsekuensi');
+    await showView('view-konsekuensi');
     switchKonsekuensiTab('jenis'); 
 }
