@@ -76,12 +76,101 @@ async function loadScanAbsensi() {
 
     attendanceScheduleVerified = true;
     setScannerControlsEnabled(true);
+    void muatKonfigurasiJamScanner();
     void muatSiswaManual();
     setTimeout(() => {
         if (activationId === scannerActivationId && viewIdGlobal === 'view-scanner') {
             startCamera('environment');
         }
     }, 500);
+}
+
+async function muatKonfigurasiJamScanner() {
+    try {
+        const res = await fetchAPI('getAppConfig');
+        if (res && res.success && res.data) {
+            window.scannerAppConfig = res.data;
+        }
+    } catch (e) {
+        // Fallback ke default jika gagal memuat konfigurasi jam
+    }
+}
+
+function parseTimeToMinutesScanner(timeStr) {
+    const match = String(timeStr || '').trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return null;
+    const h = Number(match[1]);
+    const m = Number(match[2]);
+    if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return null;
+    return h * 60 + m;
+}
+
+function resolveScanLateInfo(result, scanTime, nowDate) {
+    if (result?.type === 'pulang') {
+        return {
+            isLate: false,
+            lateMinutes: 0,
+            statusLabel: result?.message || 'Presensi Pulang Berhasil'
+        };
+    }
+
+    if (typeof result?.terlambatMenit === 'number') {
+        const mins = Math.max(0, Math.round(result.terlambatMenit));
+        return {
+            isLate: mins > 0,
+            lateMinutes: mins,
+            statusLabel: mins > 0 ? `Terlambat (${mins} menit)` : 'Tepat Waktu'
+        };
+    }
+
+    const rawText = `${result?.keterangan || ''} ${result?.message || ''}`;
+    const matchMinutes = rawText.match(/terlambat\s*\(\s*(\d+)\s*(?:m|menit)\s*\)/i);
+    if (matchMinutes) {
+        const mins = Math.max(1, parseInt(matchMinutes[1], 10));
+        return {
+            isLate: true,
+            lateMinutes: mins,
+            statusLabel: `Terlambat (${mins} menit)`
+        };
+    }
+    if (/tepat\s*waktu/i.test(rawText)) {
+        return {
+            isLate: false,
+            lateMinutes: 0,
+            statusLabel: 'Tepat Waktu'
+        };
+    }
+
+    // Fallback perhitungan di sisi klien jika backend lama belum mengirim keterangan menit terlambat
+    const cfg = window.scannerAppConfig || {};
+    const day = (nowDate instanceof Date ? nowDate : new Date()).getDay();
+    const prefix = day === 5 ? 'jumat_' : (day === 6 ? 'sabtu_' : 'seninkamis_');
+    const masukAkhirStr = cfg[`${prefix}masuk_akhir`] || cfg.jam_masuk_akhir || '07:15';
+    const masukAkhirMin = parseTimeToMinutesScanner(masukAkhirStr);
+    const scanMin = parseTimeToMinutesScanner(scanTime);
+
+    if (masukAkhirMin !== null && scanMin !== null && scanMin > masukAkhirMin) {
+        const mins = scanMin - masukAkhirMin;
+        return {
+            isLate: true,
+            lateMinutes: mins,
+            statusLabel: `Terlambat (${mins} menit)`
+        };
+    }
+
+    if (/terlambat/i.test(rawText)) {
+        return {
+            isLate: true,
+            lateMinutes: 0,
+            statusLabel: 'Terlambat'
+        };
+    }
+
+    return {
+        isLate: false,
+        lateMinutes: 0,
+        statusLabel: 'Tepat Waktu'
+    };
 }
 
 function setScannerControlsEnabled(enabled) {
@@ -304,7 +393,15 @@ async function recordAttendance(nisn, source) {
         const scanTime = isPulang ? (result.jamPulang || `${hh}:${min}:${ss}`) : (result.jamDatang || `${hh}:${min}:${ss}`);
         const namaSiswa = result.nama || 'Siswa';
         const kelasSiswa = result.kelas || '';
-        resultDiv.innerHTML = `<div class="bg-${color}-50 text-${color}-900 p-6 rounded-2xl border border-${color}-100 shadow-md animate-fade-in relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10"><i class="fas fa-check-circle text-6xl"></i></div><h3 class="font-bold text-xl uppercase mb-1 tracking-tight">${escapeScanHtml(namaSiswa)}</h3><p class="text-sm font-semibold opacity-70 mb-4">${escapeScanHtml(kelasSiswa)}</p><div class="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-${color}-200 inline-block text-center min-w-[180px]"><div class="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">${scanType}</div><div class="text-sm font-bold uppercase opacity-80 mb-2">${escapeScanHtml(result.message || 'Berhasil')}</div><div class="text-3xl font-mono font-bold">${escapeScanHtml(scanTime)}</div></div><p class="text-xs mt-4 font-bold uppercase tracking-wide opacity-50">Siap untuk siswa berikutnya...</p></div>`;
+        const lateInfo = resolveScanLateInfo(result, scanTime, now);
+        const statusDetailHtml = isPulang
+            ? `<div class="text-sm font-bold uppercase opacity-80 mb-2">${escapeScanHtml(result.message || 'Presensi Pulang Berhasil')}</div>`
+            : `<div class="text-xs font-bold uppercase opacity-80 mb-1.5">Berhasil</div>
+               <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wide mb-2 ${lateInfo.isLate ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}">
+                   <i class="fas ${lateInfo.isLate ? 'fa-clock' : 'fa-check-circle'}"></i>
+                   <span>${escapeScanHtml(lateInfo.statusLabel)}</span>
+               </div>`;
+        resultDiv.innerHTML = `<div class="bg-${color}-50 text-${color}-900 p-6 rounded-2xl border border-${color}-100 shadow-md animate-fade-in relative overflow-hidden"><div class="absolute top-0 right-0 p-4 opacity-10"><i class="fas fa-check-circle text-6xl"></i></div><h3 class="font-bold text-xl uppercase mb-1 tracking-tight">${escapeScanHtml(namaSiswa)}</h3><p class="text-sm font-semibold opacity-70 mb-4">${escapeScanHtml(kelasSiswa)}</p><div class="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-${color}-200 inline-block text-center min-w-[200px]"><div class="text-[10px] uppercase tracking-[0.2em] font-black opacity-70 mb-1">${scanType}</div>${statusDetailHtml}<div class="text-3xl font-mono font-bold">${escapeScanHtml(scanTime)}</div></div><p class="text-xs mt-4 font-bold uppercase tracking-wide opacity-50">Siap untuk siswa berikutnya...</p></div>`;
         if (source === 'manual') resetPilihanSiswaManual();
 
     } catch (err) {
