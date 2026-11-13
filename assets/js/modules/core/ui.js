@@ -65,6 +65,7 @@ function initDashboard() {
         menuHTML += createItem('Dashboard', 'fa-home', 'loadGuruDashboard()', true);
         menuHTML += createItem('Kelola Presensi', 'fa-calendar-check', 'loadScanAbsensi()');
         menuHTML += createItem('Input Kasus Siswa', 'fa-exclamation-triangle', 'loadInputKasus()');
+        menuHTML += createItem('Konsekuensi Harian', 'fa-gavel', 'loadHalamanKonsekuensi()');
         menuHTML += createItem('Profil Saya', 'fa-user-circle', 'showProfilGuruMobile()');
 
     } else if (currentUser.role === 'siswa') {
@@ -484,6 +485,7 @@ function initMobileNav() {
         navHTML += createBottomNav('Akun', 'fa-user-circle', 'showProfilGuruMobile()');
         navHTML += createBottomNav('Presensi', 'fa-calendar-check', 'loadScanAbsensi()', true);
         navHTML += createBottomNav('Kasus', 'fa-exclamation-triangle', 'loadInputKasus()');
+        navHTML += createBottomNav('Konsekuensi', 'fa-gavel', 'loadHalamanKonsekuensi()');
 
     } else if (role === 'siswa') {
         if (btnHome) { btnHome.classList.add('hidden'); btnHome.classList.remove('flex'); }
